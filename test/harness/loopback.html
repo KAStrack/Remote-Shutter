@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Loopback harness</title>
+<!-- Test-only page. Exposes helpers on window so Playwright can drive one
+     side of a pairing per browser engine, passing payloads between them. -->
+<script type="module">
+  import * as rtc from '/js/webrtc.js';
+  import * as codec from '/js/signaling-codec.js';
+
+  window.rtc = rtc;
+  window.codec = codec;
+
+  // A fake camera: an animated canvas, so media flows even without devices.
+  window.fakeTrack = (w = 1280, h = 720) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    let n = 0;
+    setInterval(() => {
+      g.fillStyle = `hsl(${(n += 7) % 360} 80% 50%)`;
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = '#fff';
+      g.fillRect((n * 5) % w, h / 3, 80, 80);
+    }, 33);
+    return c.captureStream(30).getVideoTracks()[0];
+  };
+
+  // Real camera if the engine offers one (fake device in Chromium/Firefox),
+  // otherwise the canvas. Also unlocks real host candidates.
+  window.cameraTrack = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+      return { track: s.getVideoTracks()[0], source: 'getUserMedia' };
+    } catch (e) {
+      return { track: window.fakeTrack(), source: `canvas (${e.name})` };
+    }
+  };
+
+  // One side of a pairing per page. Payloads cross between pages (and
+  // engines) only as the compact base32 text, exactly as the QR would carry.
+  window.startCamera = async () => {
+    const { track, source } = await window.cameraTrack();
+    window.side = await rtc.createCameraPeer(track);
+    window.side.source = source;
+    return window.side.payload;
+  };
+  window.startViewer = async (offer) => {
+    await window.cameraTrack().then(({ track }) => track.stop()); // unlock host candidates
+    window.side = await rtc.createViewerPeer(offer);
+    return window.side.payload;
+  };
+  window.finishCamera = (answer) => rtc.acceptAnswer(window.side.pc, answer);
+
+  window.waitOpen = () => new Promise((resolve, reject) => {
+    const { pc, dc } = window.side;
+    const t = setTimeout(() => reject(new Error(`timeout: ice=${pc.iceConnectionState} pc=${pc.connectionState} dc=${dc.readyState}`)), 15000);
+    const check = () => {
+      if (dc.readyState === 'open') { clearTimeout(t); resolve(pc.connectionState); }
+    };
+    dc.addEventListener('open', check);
+    check();
+  });
+
+  window.exchange = (text) => new Promise((resolve) => {
+    const { dc } = window.side;
+    dc.addEventListener('message', (e) => resolve(e.data), { once: true });
+    if (text) dc.send(text);
+  });
+
+  window.mediaStats = async () => {
+    const stats = await window.side.pc.getStats();
+    const out = {};
+    let codecId;
+    stats.forEach((s) => {
+      if (s.type === 'inbound-rtp' && s.kind === 'video') {
+        Object.assign(out, { framesDecoded: s.framesDecoded, width: s.frameWidth, height: s.frameHeight });
+        codecId = s.codecId;
+      }
+      if (s.type === 'outbound-rtp' && s.kind === 'video') {
+        Object.assign(out, { framesSent: s.framesSent ?? s.framesEncoded, width: s.frameWidth, height: s.frameHeight });
+        codecId = s.codecId;
+      }
+    });
+    if (codecId) out.codec = stats.get(codecId)?.mimeType;
+    return out;
+  };
+
+  window.ready = true;
+</script>
