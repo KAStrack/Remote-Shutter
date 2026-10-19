@@ -61,11 +61,13 @@
     check();
   });
 
-  window.exchange = (text) => new Promise((resolve) => {
-    const { dc } = window.side;
-    dc.addEventListener('message', (e) => resolve(e.data), { once: true });
-    if (text) dc.send(text);
-  });
+  // Arm a listener for the next message before anyone sends.
+  window.expectMessage = () => {
+    window.nextMessage = new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('no message within 5 s')), 5000);
+      window.side.dc.addEventListener('message', (e) => { clearTimeout(t); resolve(e.data); }, { once: true });
+    });
+  };
 
   window.mediaStats = async () => {
     const stats = await window.side.pc.getStats();

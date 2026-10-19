@@ -4,7 +4,7 @@
 // and that media and the data channel actually flow.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { ENGINES, openHarness } from './engines.js';
+import { ENGINES, openHarness, closeAll } from './engines.js';
 import { startServer } from '../serve.js';
 
 let server;
@@ -33,7 +33,12 @@ async function pollUntil(fn, ok, ms = 10000) {
 
 for (const camEngine of ENGINES) {
   for (const viewEngine of ENGINES) {
-    test(`camera ${camEngine} -> viewer ${viewEngine}`, async () => {
+    // Headless Firefox only offers mDNS (.local) candidates, so Firefox to
+    // Firefox depends on the host's multicast DNS. Real phones running the
+    // app grant camera access and expose real IPs on the camera side.
+    const skip = camEngine === 'firefox' && viewEngine === 'firefox' && !process.env.FF_MDNS
+      && 'both sides mDNS-only; set FF_MDNS=1 to try';
+    test(`camera ${camEngine} -> viewer ${viewEngine}`, { skip, timeout: 60000 }, async () => {
       const cam = await openHarness(camEngine, origin);
       const view = await openHarness(viewEngine, origin);
       try {
@@ -42,12 +47,12 @@ for (const camEngine of ENGINES) {
         await cam.page.evaluate((a) => window.finishCamera(a), answer);
         await Promise.all([cam.page.evaluate(() => window.waitOpen()), view.page.evaluate(() => window.waitOpen())]);
 
-        const [fromCam, fromViewer] = await Promise.all([
-          view.page.evaluate(() => window.exchange()),
-          cam.page.evaluate(() => window.exchange()),
-          cam.page.evaluate(() => window.side.dc.send('hello viewer')),
-          view.page.evaluate(() => window.side.dc.send('hello camera')),
-        ]);
+        await view.page.evaluate(() => window.expectMessage());
+        await cam.page.evaluate(() => window.expectMessage());
+        await cam.page.evaluate(() => window.side.dc.send('hello viewer'));
+        await view.page.evaluate(() => window.side.dc.send('hello camera'));
+        const fromCam = await view.page.evaluate(() => window.nextMessage);
+        const fromViewer = await cam.page.evaluate(() => window.nextMessage);
         assert.equal(fromCam, 'hello viewer');
         assert.equal(fromViewer, 'hello camera');
 
@@ -57,8 +62,7 @@ for (const camEngine of ENGINES) {
           codec: rx.codec || tx.codec, framesDecoded: rx.framesDecoded, rxSize: rx.width ? `${rx.width}x${rx.height}` : '?' });
         assert.ok(rx.framesDecoded > 5, `viewer decoded ${rx.framesDecoded} frames`);
       } finally {
-        await cam.browser.close();
-        await view.browser.close();
+        await closeAll(cam.browser, view.browser);
       }
     });
   }

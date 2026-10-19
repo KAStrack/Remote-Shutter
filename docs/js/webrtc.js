@@ -126,3 +126,78 @@ export async function createViewerPeer(offerPayload) {
   const payload = await encodeSdp(pc.localDescription.sdp, 'answer');
   return { pc, dc, track: transceiver.receiver.track, payload };
 }
+
+// Connection health, reported as plain events so each role can decide what
+// to show. Calls:
+//   onOpen()              data channel open: we're live
+//   onTrouble(kind)       'slow' (not open after timeoutMs; only if set),
+//                         'unstable' (dropped, may come back)
+//   onRecovered()         came back after 'unstable'
+//   onLost(kind)          'failed' | 'closed'; needs re-pairing
+// Returns a function that stops watching.
+export function watchConnection(pc, dc, { onOpen, onTrouble, onRecovered, onLost, timeoutMs = 0 }) {
+  let opened = false;
+  let lost = false;
+  let unstableTimer = 0;
+  const slowTimer = timeoutMs ? setTimeout(() => !opened && onTrouble?.('slow'), timeoutMs) : 0;
+
+  const lose = (kind) => {
+    if (lost) return;
+    lost = true;
+    stop();
+    onLost?.(kind);
+  };
+  const handleOpen = () => {
+    opened = true;
+    clearTimeout(slowTimer);
+    onOpen?.();
+  };
+  const handleClose = () => lose('closed');
+  const handleState = () => {
+    const s = pc.connectionState || pc.iceConnectionState;
+    if (s === 'failed') {
+      // Before the channel opens, ICE can fail while the other phone is still
+      // scanning; it recovers once checks resume, so only report trouble.
+      if (opened) lose('failed');
+      else onTrouble?.('failed');
+    } else if (s === 'disconnected' && opened) {
+      clearTimeout(unstableTimer);
+      unstableTimer = setTimeout(() => {
+        if ((pc.connectionState || pc.iceConnectionState) === 'disconnected') onTrouble?.('unstable');
+      }, 2500);
+    } else if ((s === 'connected' || s === 'completed') && opened) {
+      clearTimeout(unstableTimer);
+      onRecovered?.();
+    } else if (s === 'closed') {
+      lose('closed');
+    }
+  };
+
+  dc.addEventListener('open', handleOpen);
+  dc.addEventListener('close', handleClose);
+  pc.addEventListener('connectionstatechange', handleState);
+  pc.addEventListener('iceconnectionstatechange', handleState);
+  if (dc.readyState === 'open') handleOpen();
+
+  function stop() {
+    clearTimeout(slowTimer);
+    clearTimeout(unstableTimer);
+    dc.removeEventListener('open', handleOpen);
+    dc.removeEventListener('close', handleClose);
+    pc.removeEventListener('connectionstatechange', handleState);
+    pc.removeEventListener('iceconnectionstatechange', handleState);
+  }
+  return stop;
+}
+
+// Pull the offer payload out of whatever a scanner read: a full pairing URL
+// or a bare payload.
+export function offerFromText(text) {
+  const m = /#o=([A-Za-z2-7]+)/.exec(text);
+  return m ? m[1] : null;
+}
+
+// The app URL without fragment or query, for building pairing links.
+export function appUrl() {
+  return location.origin + location.pathname;
+}

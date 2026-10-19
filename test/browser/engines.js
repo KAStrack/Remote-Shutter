@@ -37,3 +37,11 @@ export async function openHarness(engine, origin) {
   await page.waitForFunction(() => window.ready === true);
   return { browser, page };
 }
+
+// browser.close() can hang if a tab is wedged; never let it stall the suite.
+export function closeAll(...browsers) {
+  return Promise.all(browsers.map((b) => b && Promise.race([
+    b.close().catch(() => {}),
+    new Promise((r) => setTimeout(r, 5000)),
+  ])));
+}

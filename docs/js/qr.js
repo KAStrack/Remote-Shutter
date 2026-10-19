@@ -39,6 +39,7 @@ export function qrSvg(prefix, payload, label = 'Pairing code') {
   }
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('xmlns', ns); // so the markup also works as a standalone image
   svg.setAttribute('viewBox', `0 0 ${n} ${n}`);
   svg.setAttribute('shape-rendering', 'crispEdges');
   svg.setAttribute('role', 'img');

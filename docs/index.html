@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Remote Shutter</title>
+  <meta name="description" content="Use one phone as a camera and another as its live viewfinder and shutter button. No app, no account, nothing leaves your Wi-Fi.">
+  <meta name="theme-color" content="#2B2926">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; style-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self'; font-src 'self'; manifest-src 'self'">
+  <meta name="referrer" content="no-referrer">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preload" href="fonts/jost-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body data-screen="home">
+
+  <!-- One camera <video> for the camera role. It never moves in the DOM (iOS
+       can pause a moved video); CSS places it per screen. -->
+  <video id="cam-video" class="cam-video" playsinline muted autoplay></video>
+
+  <!-- ============================================================ home -->
+  <section class="screen screen-home" data-screen="home">
+    <header class="home-head">
+      <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <h1 class="wordmark">Remote Shutter</h1>
+      <p class="tagline">Put one phone where the photo is. Frame and shoot from the other.</p>
+    </header>
+
+    <div class="roles">
+      <button class="role role-camera" type="button" data-action="role-camera">
+        <span class="role-glyph" aria-hidden="true"><span class="lens"></span></span>
+        <span class="role-text">
+          <span class="role-name">This phone is the camera</span>
+          <span class="role-hint">Prop it behind the TV, up high, against the wall.</span>
+        </span>
+      </button>
+      <button class="role role-viewer" type="button" data-action="role-viewer">
+        <span class="role-glyph" aria-hidden="true"><span class="screen-glyph"></span></span>
+        <span class="role-text">
+          <span class="role-name">This phone is the viewer</span>
+          <span class="role-hint">See the shot live and press the shutter.</span>
+        </span>
+      </button>
+    </div>
+
+    <ol class="how">
+      <li>Open this page on both phones, on the same Wi-Fi or a phone hotspot.</li>
+      <li>Scan the camera phone's code with the viewer phone.</li>
+      <li>Scan the viewer's reply with the camera phone. Done.</li>
+    </ol>
+    <p class="fine">Video and photos go straight between your phones. Nothing is uploaded.</p>
+  </section>
+
+  <!-- ===================================================== camera: code -->
+  <section hidden class="screen screen-dark" data-screen="camera-offer">
+    <header class="bar">
+      <button class="icon-btn" type="button" data-action="home" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="bar-title">Camera</span>
+      <span class="step">Step 1 of 2</span>
+    </header>
+    <div class="pair-body">
+      <div class="print" id="offer-print">
+        <div class="print-image" id="offer-qr"><div class="spinner" aria-hidden="true"></div></div>
+        <p class="print-caption" id="offer-caption">Starting the camera…</p>
+      </div>
+      <p class="pair-instructions">On the viewer phone, open the <strong>Camera app</strong> and point it at this code. Tap the link that pops up.</p>
+      <button class="btn btn-primary" type="button" data-action="camera-scan" id="btn-scan-reply" disabled>Next: scan the reply</button>
+    </div>
+  </section>
+
+  <!-- ===================================================== camera: scan -->
+  <section hidden class="screen screen-scan" data-screen="camera-scan">
+    <header class="bar">
+      <button class="icon-btn" type="button" data-action="camera-offer" aria-label="Show my code again">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="bar-title">Camera</span>
+      <span class="step">Step 2 of 2</span>
+    </header>
+    <div class="scan-frame" aria-hidden="true"><span></span></div>
+    <p class="scan-hint" id="camera-scan-hint">Point this phone at the code on the viewer phone.</p>
+  </section>
+
+  <!-- ===================================================== camera: live -->
+  <section hidden class="screen screen-dark" data-screen="camera-live">
+    <header class="bar">
+      <span class="status" id="camera-status"><span class="dot"></span><span class="status-text">Connected</span></span>
+      <button class="text-btn" type="button" data-action="disconnect">Disconnect</button>
+    </header>
+    <div class="camera-body">
+      <div class="camera-window" id="camera-window" aria-label="What the camera sees"></div>
+      <p class="camera-note" id="camera-note">Prop this phone up and use the viewer to take photos.</p>
+      <button class="btn btn-save" type="button" data-action="camera-save" id="btn-camera-save" disabled>
+        <span class="save-thumb" id="camera-thumb" aria-hidden="true"></span>
+        <span id="camera-save-label">No photos yet</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ===================================================== viewer: intro -->
+  <section hidden class="screen screen-dark" data-screen="viewer-intro">
+    <header class="bar">
+      <button class="icon-btn" type="button" data-action="home" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="bar-title">Viewer</span>
+    </header>
+    <div class="pair-body">
+      <div class="intro-art" aria-hidden="true"><span class="phone-a"></span><span class="beam"></span><span class="phone-b"></span></div>
+      <h2 class="pair-heading" id="viewer-intro-heading">Found the camera</h2>
+      <p class="pair-instructions" id="viewer-intro-text">Your browser will ask to use the camera. Allow it so the phones can find each other on this Wi-Fi. This phone's camera stays off.</p>
+      <button class="btn btn-primary" type="button" data-action="viewer-connect" id="btn-viewer-connect">Connect</button>
+      <button class="btn btn-quiet" type="button" data-action="viewer-scan" id="btn-viewer-scan" hidden>Scan the camera's code</button>
+    </div>
+  </section>
+
+  <!-- ===================================================== viewer: scan -->
+  <section hidden class="screen screen-scan" data-screen="viewer-scan">
+    <video id="viewer-scan-video" class="scan-video" playsinline muted autoplay></video>
+    <header class="bar">
+      <button class="icon-btn" type="button" data-action="viewer-intro" aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="bar-title">Viewer</span>
+    </header>
+    <div class="scan-frame" aria-hidden="true"><span></span></div>
+    <p class="scan-hint">Point this phone at the code on the camera phone.</p>
+  </section>
+
+  <!-- ===================================================== viewer: reply -->
+  <section hidden class="screen screen-dark" data-screen="viewer-reply">
+    <header class="bar">
+      <button class="icon-btn" type="button" data-action="home" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="bar-title">Viewer</span>
+      <span class="step">Almost there</span>
+    </header>
+    <div class="pair-body">
+      <div class="print">
+        <div class="print-image" id="answer-qr"><div class="spinner" aria-hidden="true"></div></div>
+        <p class="print-caption" id="answer-caption">Making a reply code…</p>
+      </div>
+      <p class="pair-instructions">On the camera phone, tap <strong>Next: scan the reply</strong> and point it at this code.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== viewer: live -->
+  <section hidden class="screen screen-live" data-screen="viewer-live">
+    <div class="stage" id="stage">
+      <video id="remote-video" class="remote-video" playsinline muted autoplay></video>
+    </div>
+    <button class="tap-to-play" type="button" data-action="play-video" id="btn-play" hidden>Tap to show the live view</button>
+
+    <header class="live-top">
+      <span class="status" id="viewer-status"><span class="dot"></span><span class="status-text">Connecting…</span></span>
+      <button class="icon-btn" type="button" data-action="disconnect" aria-label="Disconnect">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+
+    <div class="zoom" id="zoom" hidden>
+      <label class="visually-hidden" for="zoom-range">Zoom</label>
+      <input type="range" id="zoom-range" min="1" max="2" step="0.1" value="1">
+      <output id="zoom-value" for="zoom-range">1×</output>
+    </div>
+
+    <div class="countdown" id="countdown" aria-live="assertive" hidden></div>
+
+    <footer class="deck">
+      <button class="deck-btn" type="button" data-action="cycle-timer" id="btn-timer" aria-label="Self-timer: off">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        <span class="deck-label" id="timer-label">Off</span>
+      </button>
+      <button class="deck-btn" type="button" data-action="rotate" id="btn-rotate" aria-label="Rotate the photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
+        <span class="deck-label" id="rotate-label">0°</span>
+      </button>
+      <button class="shutter" type="button" data-action="shutter" id="btn-shutter" aria-label="Take photo" disabled><span></span></button>
+      <button class="deck-btn" type="button" data-action="switch-camera" id="btn-switch" aria-label="Switch between front and rear camera">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13.5a2.5 2.5 0 0 0 4.6 1.4M14.5 12.5a2.5 2.5 0 0 0-4.6-1.4"/><path d="M14.5 15.5v-1.6h-1.6M9.5 10.5v1.6h1.6"/></svg>
+        <span class="deck-label" id="switch-label">Rear</span>
+      </button>
+      <button class="deck-btn last-photo" type="button" data-action="show-photo" id="btn-last-photo" aria-label="Show the last photo" disabled>
+        <span class="last-thumb" id="last-thumb"></span>
+        <span class="deck-label">Photo</span>
+      </button>
+    </footer>
+
+    <!-- Photo review: the polaroid. The bottom strip doubles as the transfer bar. -->
+    <div class="review" id="review" hidden>
+      <figure class="polaroid" id="polaroid">
+        <div class="polaroid-image"><img id="review-img" alt="The photo you just took"></div>
+        <figcaption class="polaroid-strip">
+          <span class="develop-bar"><span id="develop-progress"></span></span>
+          <span class="polaroid-caption"><span id="review-caption">Developing…</span><span id="review-size"></span></span>
+        </figcaption>
+      </figure>
+      <div class="review-actions">
+        <button class="btn btn-primary" type="button" data-action="save-photo" id="btn-save" disabled>Save</button>
+        <button class="btn btn-quiet" type="button" data-action="share-photo" id="btn-share" hidden>Share…</button>
+        <button class="btn btn-quiet" type="button" data-action="close-photo">Back to live view</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================== errors / unsupported -->
+  <section hidden class="screen screen-dark" data-screen="problem">
+    <div class="pair-body">
+      <h2 class="pair-heading" id="problem-title">Something went wrong</h2>
+      <p class="pair-instructions" id="problem-text"></p>
+      <button class="btn btn-primary" type="button" data-action="problem-retry" id="btn-problem-retry">Try again</button>
+      <button class="btn btn-quiet" type="button" data-action="home">Back to start</button>
+    </div>
+  </section>
+
+  <!-- Camera-side countdown and flash, visible to the person near the camera. -->
+  <div class="camera-count" id="camera-count" aria-live="assertive" hidden></div>
+  <div class="flash" id="flash" aria-hidden="true"></div>
+
+  <!-- Connection trouble, shown over any live screen. -->
+  <div class="sheet" id="sheet" role="alertdialog" aria-labelledby="sheet-title" aria-describedby="sheet-text" hidden>
+    <div class="sheet-card">
+      <h2 id="sheet-title">Connection lost</h2>
+      <p id="sheet-text"></p>
+      <p class="sheet-hint" id="sheet-hint" hidden>Some Wi-Fi networks block devices from talking to each other. Try turning on a phone hotspot and connecting the other phone to it.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary" type="button" data-action="repair">Pair again</button>
+        <button class="btn btn-quiet" type="button" data-action="sheet-dismiss" id="btn-sheet-dismiss" hidden>Keep waiting</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
