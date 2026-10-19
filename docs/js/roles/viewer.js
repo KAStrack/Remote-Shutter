@@ -31,7 +31,7 @@ const s = {
 };
 
 const receiver = new PhotoReceiver({
-  onStart: () => openReview({ developing: true }),
+  onStart: (meta) => openReview({ developing: true, aspect: meta.width / meta.height }),
   onProgress: (p) => setDevelop(p),
   onPhoto: (blob, meta) => gotPhoto(blob, meta),
   onError: (err) => { toast(err.message, 4000); closeReview(); },
@@ -272,8 +272,9 @@ function onMessage(msg) {
 function applyStatus(msg) {
   s.facing = msg.facing === 'user' ? 'user' : 'environment';
   $('switch-label').textContent = s.facing === 'user' ? 'Front' : 'Rear';
+  $('switch-label').dataset.ready = '1';
   $('btn-switch').disabled = false;
-  $('btn-switch').hidden = msg.canSwitch === false;
+  $('btn-switch').classList.toggle('unavailable', msg.canSwitch === false);
   stage.classList.toggle('mirror', s.facing === 'user');
 
   const zoom = msg.zoom;
@@ -371,9 +372,10 @@ new ResizeObserver(layoutStage).observe(stage);
 
 // ------------------------------------------------------------ photo review
 
-function openReview({ developing }) {
+function openReview({ developing, aspect }) {
   const review = $('review');
   review.hidden = false;
+  if (aspect > 0) document.querySelector('.polaroid-image').style.setProperty('--ar', aspect.toFixed(4));
   $('polaroid').classList.toggle('developing', developing);
   $('polaroid').classList.remove('developed');
   if (developing) {
@@ -394,7 +396,7 @@ function gotPhoto(blob, meta) {
   if (s.photo) URL.revokeObjectURL(s.photo.url);
   const file = photoFile(blob);
   const size = meta.width && meta.height ? `${meta.width} × ${meta.height}` : '';
-  s.photo = { file, url: URL.createObjectURL(blob), size };
+  s.photo = { file, url: URL.createObjectURL(blob), size, aspect: meta.width / meta.height };
   $('polaroid').dataset.method = meta.method || '';
   const img = $('review-img');
   img.onload = () => {
@@ -413,7 +415,7 @@ function gotPhoto(blob, meta) {
 
 export function showLastPhoto() {
   if (!s.photo) return;
-  openReview({ developing: false });
+  openReview({ developing: false, aspect: s.photo.aspect });
   $('review-img').src = s.photo.url;
   $('review-size').textContent = s.photo.size;
   $('polaroid').classList.add('developed');

@@ -60,6 +60,7 @@
     --ink-soft: #ABA597;
     color-scheme: dark;
   }
+  .role-camera { box-shadow: 0 3px 0 #141311, inset 0 0 0 1.5px rgb(243 240 230 / 0.18); }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -502,9 +503,9 @@ body[data-screen="camera-scan"] .cam-video {
 body[data-screen="camera-live"] .cam-video {
   top: calc(var(--safe-t) + 72px);
   left: calc(var(--safe-l) + 16px);
-  right: calc(var(--safe-r) + 16px);
   bottom: auto;
-  width: auto;
+  /* A video's auto width is its intrinsic width, so set it explicitly. */
+  width: calc(100% - var(--safe-l) - var(--safe-r) - 32px);
   height: var(--cam-h);
   opacity: 1;
   object-fit: contain;
@@ -799,6 +800,7 @@ body[data-screen="camera-live"] .cam-video {
   color: var(--on-dark);
 }
 .deck-btn:disabled { opacity: 0.4; }
+.deck-btn.unavailable { visibility: hidden; } /* keeps the shutter centred */
 .deck-btn.on { color: var(--s-yellow); }
 .deck-label {
   font-size: 12px;
@@ -866,24 +868,24 @@ body[data-screen="camera-live"] .cam-video {
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
   transform: rotate(-1.5deg);
   animation: eject 420ms cubic-bezier(.2, .8, .3, 1.1);
-  max-width: min(88vw, 30rem);
 }
 @keyframes eject {
   from { transform: translateY(40px) rotate(-1.5deg); opacity: 0; }
 }
 
 .polaroid-image {
-  display: grid;
-  place-items: center;
-  min-width: min(70vw, 18rem);
-  min-height: min(52vw, 13rem);
+  /* Sized from the photo's aspect ratio (set from photoStart), so the
+     frame has the right shape while the photo is still arriving. */
+  --ar: 1.3333;
+  width: min(calc(88vw - 28px), 28rem, calc(56vh * var(--ar)), calc(56dvh * var(--ar)));
+  aspect-ratio: var(--ar);
   background: #33434B;
 }
 .polaroid-image img {
   display: block;
-  max-width: 100%;
-  max-height: 58vh;
-  max-height: 58dvh;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .polaroid.developing .polaroid-image img { visibility: hidden; }
 .polaroid.developed .polaroid-image img { animation: develop 2.6s ease-out; }
