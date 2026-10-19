@@ -406,7 +406,6 @@ button:disabled { cursor: default; }
   background: var(--paper);
   border-radius: 3px;
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset, 0 14px 30px rgb(0 0 0 / 0.45);
-  transform: rotate(-1.2deg);
 }
 .print-image {
   display: grid;
@@ -866,11 +865,10 @@ body[data-screen="camera-live"] .cam-video {
   background: var(--paper);
   border-radius: 3px;
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
-  transform: rotate(-1.5deg);
   animation: eject 420ms cubic-bezier(.2, .8, .3, 1.1);
 }
 @keyframes eject {
-  from { transform: translateY(40px) rotate(-1.5deg); opacity: 0; }
+  from { transform: translateY(40px); opacity: 0; }
 }
 
 .polaroid-image {
@@ -1021,5 +1019,4 @@ body[data-screen="camera-live"] .cam-video {
     transition-duration: 1ms !important;
   }
   .stage.snap::after { animation: none; }
-  .print, .polaroid { transform: none; }
 }
