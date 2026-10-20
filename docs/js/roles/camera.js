@@ -110,8 +110,8 @@ export async function pair() {
   Object.assign(s, { pc: peer.pc, dc: peer.dc, sender: peer.sender });
   listen(s.dc, onMessage);
 
-  $('offer-qr').replaceChildren(qrSvg(`${appUrl()}#o=`, peer.payload, 'Pairing code for the viewer phone'));
-  $('offer-caption').textContent = 'Scan me with the viewer phone';
+  $('offer-qr').replaceChildren(qrSvg(`${appUrl()}#o=`, peer.payload, 'Pairing code for the other phone'));
+  $('offer-caption').textContent = 'Scan me with the other phone';
   $('btn-scan-reply').disabled = false;
 
   s.unwatch = watchConnection(s.pc, s.dc, {
@@ -125,11 +125,11 @@ export async function pair() {
 export function scanReply() {
   if (!s.pc) return;
   show('camera-scan');
-  $('camera-scan-hint').textContent = 'Point this phone at the code on the viewer phone.';
+  $('camera-scan-hint').textContent = 'Point this phone at the code on the other phone.';
   stopScanning();
   s.stopScan = startScanner(video, (text) => {
     if (offerFromText(text)) {
-      $('camera-scan-hint').textContent = 'That’s this phone’s own kind of code. Scan the one on the viewer phone.';
+      $('camera-scan-hint').textContent = 'That’s a camera code. Scan the code on the other phone.';
       return false;
     }
     handleAnswer(text.trim());
@@ -155,7 +155,7 @@ async function handleAnswer(text) {
   } catch (err) {
     if (gen !== s.generation) return;
     console.warn('Bad answer code', err);
-    $('camera-scan-hint').textContent = 'That code didn’t work. Point at the code on the viewer phone.';
+    $('camera-scan-hint').textContent = 'That code didn’t work. Point at the code on the other phone.';
     setTimeout(() => currentScreen() === 'camera-scan' && scanReply(), 1500);
     return;
   }

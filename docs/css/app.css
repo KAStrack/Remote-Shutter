@@ -233,8 +233,14 @@ button:disabled { cursor: default; }
 .role-name { font-weight: 650; font-size: 19px; line-height: 1.2; }
 .role-hint { font-size: 15px; opacity: 0.72; line-height: 1.3; }
 
-.how {
+.how-note {
   margin: 32px 0 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
+.how {
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
   counter-reset: step;
@@ -250,6 +256,7 @@ button:disabled { cursor: default; }
   gap: 10px;
   align-items: baseline;
 }
+.how strong { font-weight: 600; color: var(--ink); }
 .how li::before {
   content: counter(step);
   display: grid;
@@ -310,10 +317,60 @@ button:disabled { cursor: default; }
 }
 
 .step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
   font-size: 14px;
   color: var(--on-dark-soft);
+  white-space: nowrap;
 }
+.pips {
+  display: inline-flex;
+  gap: 4px;
+}
+.pips i {
+  width: 14px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(243 240 230 / 0.22);
+}
+.pips i.done { background: rgb(243 240 230 / 0.6); }
+.pips i.now { background: var(--s-yellow); }
+
+/* Numbered instructions on the pairing screens; numbers match across both
+   phones (and the start screen's list) so you can follow along. */
+.step-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  max-width: 21rem;
+  list-style: none;
+  text-align: left;
+  color: var(--on-dark-soft);
+}
+.step-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.step-list li::before { content: attr(data-step); }
+.step-list li::before, .step-num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: #1D1C1A;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+}
+.step-list li::before { margin-top: -2px; }
+.step-list strong { color: var(--on-dark); font-weight: 600; }
 
 .icon-btn {
   display: grid;
@@ -582,7 +639,12 @@ body[data-screen="camera-live"] .cam-video {
 .scan-frame span::before { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 28px; }
 .scan-frame span::after { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 28px; }
 
+.scan-hint .step-num { flex: none; }
 .scan-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   position: fixed;
   left: 16px;
   right: 16px;

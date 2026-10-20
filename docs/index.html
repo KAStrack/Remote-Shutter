@@ -49,10 +49,11 @@
       </button>
     </div>
 
+    <p class="how-note">Put both phones on the same Wi-Fi, or one on the other's hotspot. Then:</p>
     <ol class="how">
-      <li>Open this page on both phones, on the same Wi-Fi or a phone hotspot.</li>
-      <li>Scan the camera phone's code with the viewer phone.</li>
-      <li>Scan the viewer's reply with the camera phone. Done.</li>
+      <li><span>On the camera phone, choose <strong>This phone is the camera</strong>. Scan its code with the other phone.</span></li>
+      <li><span>When the other phone shows its own code, tap <strong>Next</strong> on the camera phone.</span></li>
+      <li><span>Point the camera phone at that code. You're connected.</span></li>
     </ol>
     <button class="link-btn" type="button" data-action="toggle-app-qr" id="btn-app-qr" aria-expanded="false" aria-controls="app-qr">Open on another phone</button>
     <div class="app-qr" id="app-qr" hidden>
@@ -72,14 +73,17 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <span class="bar-title">Camera</span>
-      <span class="step">Step 1 of 2</span>
+      <span class="step"><span class="pips" aria-hidden="true"><i class="now"></i><i></i><i></i></span>Step 1 of 3</span>
     </header>
     <div class="pair-body">
       <div class="print" id="offer-print">
         <div class="print-image" id="offer-qr"><div class="spinner" aria-hidden="true"></div></div>
         <p class="print-caption" id="offer-caption">Starting the camera…</p>
       </div>
-      <p class="pair-instructions">On the viewer phone, open the <strong>Camera app</strong> and point it at this code. Tap the link that pops up.</p>
+      <ol class="step-list">
+        <li data-step="1"><span>On the other phone, open the <strong>Camera app</strong>, point it at this code and tap the link.</span></li>
+        <li data-step="2"><span>When the other phone shows its own code, tap <strong>Next</strong>.</span></li>
+      </ol>
       <button class="btn btn-primary" type="button" data-action="camera-scan" id="btn-scan-reply" disabled>Next: scan the reply</button>
     </div>
   </section>
@@ -91,10 +95,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <span class="bar-title">Camera</span>
-      <span class="step">Step 2 of 2</span>
+      <span class="step"><span class="pips" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="now"></i></span>Step 3 of 3</span>
     </header>
     <div class="scan-frame" aria-hidden="true"><span></span></div>
-    <p class="scan-hint" id="camera-scan-hint">Point this phone at the code on the viewer phone.</p>
+    <p class="scan-hint"><span class="step-num" aria-hidden="true">3</span><span id="camera-scan-hint">Point this phone at the code on the other phone.</span></p>
   </section>
 
   <!-- ===================================================== camera: live -->
@@ -120,6 +124,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <span class="bar-title">Viewer</span>
+      <span class="step"><span class="pips" aria-hidden="true"><i class="now"></i><i></i><i></i></span>Step 1 of 3</span>
     </header>
     <div class="pair-body">
       <div class="intro-art" aria-hidden="true"><span class="phone-a"></span><span class="beam"></span><span class="phone-b"></span></div>
@@ -138,9 +143,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <span class="bar-title">Viewer</span>
+      <span class="step"><span class="pips" aria-hidden="true"><i class="now"></i><i></i><i></i></span>Step 1 of 3</span>
     </header>
     <div class="scan-frame" aria-hidden="true"><span></span></div>
-    <p class="scan-hint">Point this phone at the code on the camera phone.</p>
+    <p class="scan-hint"><span class="step-num" aria-hidden="true">1</span><span>Point this phone at the code on the camera phone.</span></p>
   </section>
 
   <!-- ===================================================== viewer: reply -->
@@ -150,14 +156,17 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <span class="bar-title">Viewer</span>
-      <span class="step">Almost there</span>
+      <span class="step"><span class="pips" aria-hidden="true"><i class="done"></i><i class="now"></i><i class="now"></i></span>Steps 2 and 3 of 3</span>
     </header>
     <div class="pair-body">
       <div class="print">
         <div class="print-image" id="answer-qr"><div class="spinner" aria-hidden="true"></div></div>
         <p class="print-caption" id="answer-caption">Making a reply code…</p>
       </div>
-      <p class="pair-instructions">On the camera phone, tap <strong>Next: scan the reply</strong> and point it at this code.</p>
+      <ol class="step-list">
+        <li data-step="2"><span>On the camera phone, tap <strong>Next: scan the reply</strong>.</span></li>
+        <li data-step="3"><span>Point the camera phone at this code.</span></li>
+      </ol>
     </div>
   </section>
 

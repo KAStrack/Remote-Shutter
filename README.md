@@ -16,10 +16,11 @@ It's for the photos you can't line up from behind the camera: the back of the TV
 
 ## Using it
 
-1. Open [the app](https://kastrack.github.io/Remote-Shutter/) on both phones, on the **same Wi-Fi** or with one phone on the other's **hotspot**.
-2. On the phone that will take the photo, tap **This phone is the camera**. It shows a code.
-3. On the other phone, open the normal **Camera app** and point it at that code. Tap the link that pops up, then tap **Connect**.
-4. The viewer now shows a reply code. On the camera phone, tap **Next: scan the reply** and point it at that code.
+Put both phones on the **same Wi-Fi**, or one on the other's **hotspot**, and open [the app](https://kastrack.github.io/Remote-Shutter/) on the phone that will take the photo. Pairing takes three steps, and both phones show which step you're on:
+
+1. On the camera phone, tap **This phone is the camera**. It shows a code. On the other phone, open the normal **Camera app**, point it at that code, tap the link that pops up, then tap **Connect**.
+2. The other phone now shows its own code. On the camera phone, tap **Next: scan the reply**.
+3. Point the camera phone at the other phone's code. You're connected.
 
 Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, front/rear switch, and zoom where the phone supports it. Each photo appears on the viewer, and both phones can save it.
 
