@@ -6,6 +6,7 @@ import { openCamera, cameraErrorMessage, capturePhoto, zoomInfo, setZoom } from 
 import { MSG, send, listen, sendPhoto } from '../protocol.js';
 import { qrSvg, startScanner } from '../qr.js';
 import { photoFile, save } from '../share.js';
+import { t, setText } from '../i18n.js';
 
 const CONNECT_TIMEOUT_MS = 15000;
 
@@ -31,11 +32,11 @@ const s = {
 
 export async function start() {
   show('camera-offer');
-  resetOfferCard('Starting the camera…');
+  resetOfferCard('camera.startingCamera');
   try {
     await useStream(await openCamera(s.facing));
   } catch (err) {
-    showProblem('The camera didn’t start', cameraErrorMessage(err), start);
+    showProblem(t('camera.startFailedTitle'), cameraErrorMessage(err), start);
     return;
   }
   keepAwake(true);
@@ -86,9 +87,9 @@ function closePeer(sayBye) {
 
 // ------------------------------------------------------------ pairing
 
-function resetOfferCard(caption) {
+function resetOfferCard(captionKey) {
   $('offer-qr').replaceChildren(Object.assign(document.createElement('div'), { className: 'spinner' }));
-  $('offer-caption').textContent = caption;
+  setText($('offer-caption'), captionKey);
   $('btn-scan-reply').disabled = true;
 }
 
@@ -97,27 +98,27 @@ export async function pair() {
   closePeer(false);
   hideSheet();
   show('camera-offer');
-  resetOfferCard('Making a pairing code…');
+  resetOfferCard('camera.makingCode');
   let peer;
   try {
     peer = await createCameraPeer(s.track);
   } catch (err) {
     console.error(err);
-    showProblem('Couldn’t make a pairing code', `This browser couldn’t set up a connection (${err.message}).`, pair);
+    showProblem(t('camera.codeFailedTitle'), t('camera.codeFailedText'), pair);
     return;
   }
   if (gen !== s.generation) { peer.pc.close(); return; }
   Object.assign(s, { pc: peer.pc, dc: peer.dc, sender: peer.sender });
   listen(s.dc, onMessage);
 
-  $('offer-qr').replaceChildren(qrSvg(`${appUrl()}#o=`, peer.payload, 'Pairing code for the other phone'));
-  $('offer-caption').textContent = 'Scan me with the other phone';
+  $('offer-qr').replaceChildren(qrSvg(`${appUrl()}#o=`, peer.payload, t('camera.offerLabel')));
+  setText($('offer-caption'), 'camera.offerCaption');
   $('btn-scan-reply').disabled = false;
 
   s.unwatch = watchConnection(s.pc, s.dc, {
     onOpen: () => gen === s.generation && onConnected(),
     onTrouble: (kind) => gen === s.generation && onTrouble(kind),
-    onRecovered: () => { hideSheet(); setStatus('camera-status', 'live', 'Connected'); },
+    onRecovered: () => { hideSheet(); setStatus('camera-status', 'live', 'status.connected'); },
     onLost: (kind) => gen === s.generation && onLost(kind),
   });
 }
@@ -125,11 +126,11 @@ export async function pair() {
 export function scanReply() {
   if (!s.pc) return;
   show('camera-scan');
-  $('camera-scan-hint').textContent = 'Point this phone at the code on the other phone.';
+  setText($('camera-scan-hint'), 'camera.scanHint');
   stopScanning();
   s.stopScan = startScanner(video, (text) => {
     if (offerFromText(text)) {
-      $('camera-scan-hint').textContent = 'That’s a camera code. Scan the code on the other phone.';
+      setText($('camera-scan-hint'), 'camera.scanWrongCode');
       return false;
     }
     handleAnswer(text.trim());
@@ -149,13 +150,13 @@ function stopScanning() {
 
 async function handleAnswer(text) {
   const gen = s.generation;
-  $('camera-scan-hint').textContent = 'Got it. Connecting…';
+  setText($('camera-scan-hint'), 'camera.scanGotIt');
   try {
     await acceptAnswer(s.pc, text);
   } catch (err) {
     if (gen !== s.generation) return;
     console.warn('Bad answer code', err);
-    $('camera-scan-hint').textContent = 'That code didn’t work. Point at the code on the other phone.';
+    setText($('camera-scan-hint'), 'camera.scanBadCode');
     setTimeout(() => currentScreen() === 'camera-scan' && scanReply(), 1500);
     return;
   }
@@ -169,27 +170,27 @@ function onConnected() {
   stopScanning();
   hideSheet();
   show('camera-live');
-  setStatus('camera-status', 'live', 'Connected');
+  setStatus('camera-status', 'live', 'status.connected');
   if (s.sender) applyPreviewEncoding(s.sender, s.track);
   sendStatus();
 }
 
 function onTrouble(kind) {
   if (kind === 'unstable') {
-    setStatus('camera-status', 'warn', 'Reconnecting…');
-    showSheet({ title: 'Connection dropped', text: 'Trying to reconnect to the viewer phone.', waiting: true });
+    setStatus('camera-status', 'warn', 'status.reconnecting');
+    showSheet({ title: t('sheet.droppedTitle'), text: t('sheet.droppedToViewer'), waiting: true });
   } else if (kind === 'slow' && currentScreen() === 'camera-scan') {
-    showSheet({ title: 'Still connecting', text: 'The phones can’t reach each other yet.', hint: true, waiting: true });
+    showSheet({ title: t('sheet.slowTitle'), text: t('sheet.slowText'), hint: true, waiting: true });
   }
 }
 
 function onLost(kind) {
   stopTimer(false);
-  setStatus('camera-status', 'lost', 'Disconnected');
+  setStatus('camera-status', 'lost', 'status.disconnected');
   if (kind === 'bye') {
-    showSheet({ title: 'Viewer disconnected', text: 'The viewer phone ended the session. Pair again to keep shooting.' });
+    showSheet({ title: t('sheet.viewerLeftTitle'), text: t('sheet.viewerLeftText') });
   } else {
-    showSheet({ title: 'Connection lost', text: 'The phones stopped talking to each other. Pairing again needs both codes, like the first time.', hint: kind === 'failed' });
+    showSheet({ title: t('sheet.lostTitle'), text: t('sheet.lostText'), hint: kind === 'failed' });
   }
 }
 
@@ -237,7 +238,7 @@ async function sendStatus() {
 
 async function shoot() {
   if (s.busy) {
-    send(s.dc, MSG.ERROR, { message: 'Still sending the last photo. Try again in a moment.' });
+    send(s.dc, MSG.ERROR, { code: 'busy' });
     return;
   }
   s.busy = true;
@@ -253,8 +254,8 @@ async function shoot() {
     }
   } catch (err) {
     console.error(err);
-    send(dc, MSG.ERROR, { message: `The camera couldn’t take the photo (${err.message}).` });
-    toast('Couldn’t take the photo');
+    send(dc, MSG.ERROR, { code: 'captureFailed' });
+    toast(t('camera.captureFailed'));
   } finally {
     s.busy = false;
   }
@@ -267,7 +268,7 @@ function keepLastPhoto(blob) {
   const thumb = $('camera-thumb');
   thumb.replaceChildren(Object.assign(new Image(), { src: s.lastUrl, alt: '' }));
   $('btn-camera-save').disabled = false;
-  $('camera-save-label').textContent = 'Save last photo';
+  setText($('camera-save-label'), 'camera.saveLast');
 }
 
 // Runs from the Save button tap; no awaits before share() (Safari).
@@ -275,7 +276,7 @@ export function saveLast() {
   if (!s.lastPhoto) return;
   const file = s.lastPhoto;
   save(file).then((result) => {
-    if (result === 'downloaded') toast('Saved to Downloads');
+    if (result === 'downloaded') toast(t('common.savedToDownloads'));
   });
 }
 
@@ -338,10 +339,11 @@ async function switchCamera() {
     try {
       await useStream(await openCamera(previous));
     } catch (err2) {
-      send(s.dc, MSG.ERROR, { message: cameraErrorMessage(err2) });
+      send(s.dc, MSG.ERROR, { code: 'cameraFailed' });
+      toast(cameraErrorMessage(err2), 5000);
       return;
     }
-    send(s.dc, MSG.ERROR, { message: 'This phone couldn’t switch cameras.' });
+    send(s.dc, MSG.ERROR, { code: 'switchFailed' });
   }
   if (s.sender) {
     await s.sender.replaceTrack(s.track);

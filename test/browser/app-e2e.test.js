@@ -21,9 +21,9 @@ const LAUNCH = {
   webkit: () => webkit.launch(),
 };
 
-async function openApp(engine, path = '/') {
+async function openApp(engine, path = '/', locale = 'en-US') {
   const browser = await LAUNCH[engine]();
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale });
   try { await context.grantPermissions(['camera'], { origin }); } catch { /* engine lacks it */ }
   if (engine === 'webkit') {
     // Playwright's Linux WebKit (WPE) tab often crashes on drawImage() from a
@@ -92,10 +92,46 @@ test('home: "Open on another phone" shows a code for this page', async () => {
   }
 });
 
-const PAIRS = process.env.PAIR ? [process.env.PAIR.split(',')] : [['chromium', 'chromium'], ['chromium', 'webkit'], ['webkit', 'chromium']];
-for (const [camEngine, viewEngine] of PAIRS) {
-  test(`app: camera ${camEngine}, viewer ${viewEngine}`, { timeout: 120000 }, async () => {
-    const cam = await openApp(camEngine);
+test('language: Simplified Chinese is picked automatically, and the switch is remembered', async () => {
+  const zh = await openApp('chromium', '/', 'zh-CN');
+  const tw = await openApp('chromium', '/', 'zh-TW');
+  try {
+    const state = (page) => page.evaluate(() => ({
+      lang: document.documentElement.lang,
+      title: document.title,
+      wordmark: document.querySelector('.wordmark').textContent,
+      camera: document.querySelector('[data-action="role-camera"] .role-name').textContent,
+      howHtml: document.querySelector('.how li span').innerHTML,
+    }));
+    const a = await state(zh.page);
+    assert.equal(a.lang, 'zh-Hans');
+    assert.equal(a.title, '遥控快门');
+    assert.equal(a.wordmark, '遥控快门');
+    assert.equal(a.camera, '这台手机当相机');
+    assert.match(a.howHtml, /<strong>这台手机当相机<\/strong>/);
+    assert.equal((await state(tw.page)).lang, 'en', 'Traditional Chinese falls back to English');
+
+    // Switch to English; it sticks after a reload.
+    await zh.page.click('[data-action="switch-language"]');
+    assert.equal((await state(zh.page)).camera, 'This phone is the camera');
+    await zh.page.reload();
+    assert.equal((await state(zh.page)).lang, 'en');
+    await zh.page.click('[data-action="switch-language"]');
+    assert.equal((await state(zh.page)).lang, 'zh-Hans');
+    assert.deepEqual(zh.errors, []);
+  } finally {
+    await closeAll(zh.browser, tw.browser);
+  }
+});
+
+// [camera engine, viewer engine, camera locale, viewer locale]
+const PAIRS = process.env.PAIR ? [process.env.PAIR.split(',')] : [
+  ['chromium', 'chromium'], ['chromium', 'webkit'], ['webkit', 'chromium'],
+  ['chromium', 'chromium', 'zh-CN', 'en-US'],
+];
+for (const [camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US'] of PAIRS) {
+  test(`app: camera ${camEngine} (${camLocale}), viewer ${viewEngine} (${viewLocale})`, { timeout: 120000 }, async () => {
+    const cam = await openApp(camEngine, '/', camLocale);
     let view;
     try {
       // Camera shows its pairing code.
@@ -106,7 +142,7 @@ for (const [camEngine, viewEngine] of PAIRS) {
       const offerVersion = await cam.page.$eval('#offer-qr svg', (el) => Number(el.dataset.version));
 
       // Viewer opens the link (as the native camera app would) and connects.
-      view = await openApp(viewEngine, offerUrl.slice(origin.length));
+      view = await openApp(viewEngine, offerUrl.slice(origin.length), viewLocale);
       assert.equal(await screenOf(view.page), 'viewer-intro');
       assert.equal(await view.page.evaluate(() => location.hash), '', 'offer stripped from the URL');
       await view.page.click('#btn-viewer-connect');
@@ -141,6 +177,12 @@ for (const [camEngine, viewEngine] of PAIRS) {
           return Math.abs(z - v) < 0.2;
         }, target, { timeout: 5000 });
       }
+
+      // Each phone speaks its own language.
+      const camStatus = await cam.page.textContent('#camera-status .status-text');
+      const viewStatus = await view.page.textContent('#viewer-status .status-text');
+      assert.equal(camStatus, camLocale === 'zh-CN' ? '已连接' : 'Connected');
+      assert.equal(viewStatus, viewLocale === 'zh-CN' ? '实时' : 'Live');
 
       // Shutter -> photo develops on the viewer, camera can save it.
       await view.page.click('#btn-shutter');
@@ -194,7 +236,7 @@ for (const [camEngine, viewEngine] of PAIRS) {
       // Viewer disconnects: the camera says so.
       await view.page.click('.live-top [data-action="disconnect"]');
       await cam.page.waitForFunction(() => !document.getElementById('sheet').hidden);
-      assert.match(await cam.page.textContent('#sheet-title'), /Viewer disconnected/);
+      assert.equal(await cam.page.textContent('#sheet-title'), camLocale === 'zh-CN' ? '取景器已断开' : 'Viewer disconnected');
 
       console.log(`  ${camEngine} -> ${viewEngine}: offer QR v${offerVersion}, photo ${p1.width}x${p1.height} via ${p1.method}, rotated ${p2.width}x${p2.height}, timer ${elapsed} ms${camZoom ? ', zoom ok' : ''}`);
       assert.deepEqual(cam.errors, []);

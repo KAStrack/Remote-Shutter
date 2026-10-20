@@ -24,6 +24,12 @@ Put both phones on the **same Wi-Fi**, or one on the other's **hotspot**, and op
 
 Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, front/rear switch, and zoom where the phone supports it. Each photo appears on the viewer, and both phones can save it.
 
+## Languages
+
+The app is available in English and Simplified Chinese (简体中文). It follows the phone's language settings: the first language in the phone's list that the app supports wins. Simplified Chinese is used for `zh`, `zh-CN`, `zh-SG` and `zh-Hans`. Traditional Chinese settings (`zh-TW`, `zh-HK`, `zh-Hant`) get English. The **中文 / English** button on the start screen switches language, and the phone remembers the choice.
+
+Each phone uses its own language, so a Chinese camera phone and an English viewer work together. To add a language, copy `docs/js/locales/en.js`, translate the values, and list the new file in `docs/js/i18n.js` and `docs/sw.js`. The unit tests check that every language has every string.
+
 ## Deploying to GitHub Pages
 
 Everything the site needs is in `docs/`. There's no build step.

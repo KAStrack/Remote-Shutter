@@ -1,15 +1,16 @@
 // Screenshots of every screen in a real paired session, for design review.
-// Usage: node test/tools/screens.mjs <out-dir>
+// Usage: node test/tools/screens.mjs <out-dir> [locale]
 import { chromium } from 'playwright';
 import { startServer } from '../serve.js';
 import { readQr, showToCamera, restoreCamera } from '../browser/app-helpers.js';
 
 const out = process.argv[2] || '.';
+const locale = process.argv[3] || 'en-US';
 const server = await startServer(0);
 const origin = `http://localhost:${server.address().port}`;
 const browser = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
-const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, permissions: ['camera'], hasTouch: true, isMobile: true };
-const shot = (page, name) => page.screenshot({ path: `${out}/${name}.png` });
+const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, permissions: ['camera'], hasTouch: true, isMobile: true, locale };
+const shot = (page, name) => page.screenshot({ path: `${out}/${name}${locale === 'en-US' ? '' : `-${locale}`}.png` });
 
 for (const scheme of ['light', 'dark']) {
   const ctx = await browser.newContext({ ...phone, colorScheme: scheme });

@@ -1,6 +1,6 @@
 // Offline app shell. Bump VERSION whenever any file below changes, so phones
 // pick up the new release (the unit tests check this list matches docs/).
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `remote-shutter-${VERSION}`;
 
 const ASSETS = [
@@ -15,6 +15,9 @@ const ASSETS = [
   'icons/icon.svg',
   'js/app.js',
   'js/capture.js',
+  'js/i18n.js',
+  'js/locales/en.js',
+  'js/locales/zh-Hans.js',
   'js/protocol.js',
   'js/qr-worker.js',
   'js/qr.js',

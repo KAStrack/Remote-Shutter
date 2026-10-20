@@ -6,6 +6,7 @@ import { openCamera, cameraErrorMessage, unlockHostCandidates } from '../capture
 import { MSG, send, listen, PhotoReceiver } from '../protocol.js';
 import { qrSvg, startScanner } from '../qr.js';
 import { photoFile, save, share, offerSeparateShare } from '../share.js';
+import { t, locale, setText, setLabel } from '../i18n.js';
 
 const TIMERS = [0, 3, 5, 10];
 const NO_ICE_HINT_MS = 20000;
@@ -34,7 +35,11 @@ const receiver = new PhotoReceiver({
   onStart: (meta) => openReview({ developing: true, aspect: meta.width / meta.height }),
   onProgress: (p) => setDevelop(p),
   onPhoto: (blob, meta) => gotPhoto(blob, meta),
-  onError: (err) => { toast(err.message, 4000); closeReview(); },
+  onError: (err) => {
+    console.warn(err);
+    toast(t('viewer.photoIncomplete'), 4000);
+    closeReview();
+  },
 });
 
 // ------------------------------------------------------------ entry points
@@ -42,8 +47,7 @@ const receiver = new PhotoReceiver({
 // Opened from the camera phone's QR (native Camera app): offer is in the URL.
 export function startFromLink(offer) {
   s.offer = offer;
-  $('viewer-intro-heading').textContent = 'Found the camera';
-  $('viewer-intro-text').textContent = 'Your browser will ask to use the camera. Allow it so the phones can find each other on this Wi-Fi. This phone’s camera stays off.';
+  setIntroText('viewer.foundTitle', 'viewer.foundText');
   $('btn-viewer-connect').hidden = false;
   $('btn-viewer-scan').hidden = true;
   show('viewer-intro');
@@ -52,13 +56,17 @@ export function startFromLink(offer) {
 // Chosen from the home screen (or re-pairing): scan the code in-page.
 export function startFromHome(repairing = false) {
   s.offer = null;
-  $('viewer-intro-heading').textContent = repairing ? 'Pair again' : 'Scan the camera phone';
-  $('viewer-intro-text').textContent = repairing
-    ? 'On the camera phone, tap Pair again to show a new code. Then scan it with this phone.'
-    : 'On the other phone, choose This phone is the camera. Then scan its code with this phone’s Camera app, or right here.';
+  if (repairing) setIntroText('viewer.repairTitle', 'viewer.repairText');
+  else setIntroText('viewer.scanTitle', 'viewer.scanText');
   $('btn-viewer-connect').hidden = true;
   $('btn-viewer-scan').hidden = false;
   show('viewer-intro');
+}
+
+// Keys are kept on the elements so a language switch re-translates them.
+function setIntroText(titleKey, textKey) {
+  setText($('viewer-intro-heading'), titleKey);
+  setText($('viewer-intro-text'), textKey);
 }
 
 export function stop() {
@@ -89,7 +97,7 @@ export async function scan() {
   try {
     s.scanStream = await openCamera('environment');
   } catch (err) {
-    showProblem('The camera didn’t start', `${cameraErrorMessage(err)} You can also scan the code with the Camera app instead.`, scan);
+    showProblem(t('camera.startFailedTitle'), `${cameraErrorMessage(err)} ${t('viewer.scanFailedExtra')}`, scan);
     return;
   }
   video.srcObject = s.scanStream;
@@ -97,7 +105,7 @@ export async function scan() {
   s.stopScan = startScanner(video, (text) => {
     const offer = offerFromText(text);
     if (!offer) {
-      toast('That’s not a camera code. Scan the code on the camera phone.');
+      toast(t('viewer.notCameraCode'));
       return false;
     }
     stopScanning();
@@ -128,13 +136,13 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
   closePeer(false);
   show('viewer-reply');
   $('answer-qr').replaceChildren(Object.assign(document.createElement('div'), { className: 'spinner' }));
-  $('answer-caption').textContent = 'Making a reply code…';
+  setText($('answer-caption'), 'viewer.makingReply');
   keepAwake(true);
 
   // Camera permission makes browsers reveal real IPs instead of mDNS names.
   // Not fatal if refused: the camera phone's addresses are usually enough.
   if (!permissionGranted && !(await unlockHostCandidates())) {
-    toast('No camera permission. Connecting may be less reliable.', 4000);
+    toast(t('viewer.noPermission'), 4000);
   }
 
   let peer;
@@ -143,9 +151,7 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
   } catch (err) {
     console.error(err);
     if (gen !== s.generation) return;
-    showProblem('That code didn’t work',
-      `${err.message}. Show a fresh code on the camera phone (Back, then This phone is the camera) and scan it again.`,
-      () => startFromHome());
+    showProblem(t('viewer.badCodeTitle'), t('viewer.badCodeText'), () => startFromHome());
     return;
   }
   if (gen !== s.generation) { peer.pc.close(); return; }
@@ -155,8 +161,8 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
   remote.srcObject = new MediaStream([peer.track]);
   remote.play().catch(() => {});
 
-  $('answer-qr').replaceChildren(qrSvg('', peer.payload, 'Reply code for the camera phone'));
-  $('answer-caption').textContent = 'Scan me with the camera phone';
+  $('answer-qr').replaceChildren(qrSvg('', peer.payload, t('viewer.replyLabel')));
+  setText($('answer-caption'), 'viewer.replyCaption');
 
   // ICE connects to the camera phone before it scans our reply (it answers
   // connectivity checks with its own credentials). If that hasn't happened
@@ -165,7 +171,7 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
     if (gen !== s.generation || s.dc?.readyState === 'open') return;
     const ice = s.pc?.iceConnectionState;
     if (ice !== 'connected' && ice !== 'completed') {
-      showSheet({ title: 'Can’t reach the camera phone', text: 'The phones can’t see each other on this network yet.', hint: true, waiting: true });
+      showSheet({ title: t('sheet.cantReachTitle'), text: t('sheet.cantReachText'), hint: true, waiting: true });
     }
   }, NO_ICE_HINT_MS);
 
@@ -173,10 +179,10 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
     onOpen: () => gen === s.generation && onConnected(gen),
     onTrouble: (kind) => {
       if (gen !== s.generation || kind !== 'unstable') return;
-      setStatus('viewer-status', 'warn', 'Reconnecting…');
-      showSheet({ title: 'Connection dropped', text: 'Trying to reconnect to the camera phone.', waiting: true });
+      setStatus('viewer-status', 'warn', 'status.reconnecting');
+      showSheet({ title: t('sheet.droppedTitle'), text: t('sheet.droppedToCamera'), waiting: true });
     },
-    onRecovered: () => { hideSheet(); setStatus('viewer-status', 'live', 'Live'); },
+    onRecovered: () => { hideSheet(); setStatus('viewer-status', 'live', 'status.live'); },
     onLost: (kind) => gen === s.generation && onLost(kind),
   });
 }
@@ -184,7 +190,7 @@ export async function connect(offer = s.offer, { permissionGranted = false } = {
 function onConnected(gen) {
   hideSheet();
   show('viewer-live');
-  setStatus('viewer-status', 'connecting', 'Waiting for video…');
+  setStatus('viewer-status', 'connecting', 'status.waitingVideo');
   $('btn-shutter').disabled = false;
   layoutStage();
   remote.play().catch(() => { $('btn-play').hidden = false; });
@@ -192,8 +198,8 @@ function onConnected(gen) {
   watchFrames(gen);
   setTimeout(() => {
     if (gen === s.generation && !s.hasFrames && s.dc?.readyState === 'open') {
-      setStatus('viewer-status', 'warn', 'No video');
-      showSheet({ title: 'Connected, but no video', text: 'The phones are paired, but the live view isn’t coming through.', hint: true, waiting: true });
+      setStatus('viewer-status', 'warn', 'status.noVideo');
+      showSheet({ title: t('sheet.noVideoTitle'), text: t('sheet.noVideoText'), hint: true, waiting: true });
     }
   }, NO_VIDEO_HINT_MS);
 }
@@ -201,11 +207,11 @@ function onConnected(gen) {
 function onLost(kind) {
   $('btn-shutter').disabled = true;
   hideCountdown();
-  setStatus('viewer-status', 'lost', 'Disconnected');
+  setStatus('viewer-status', 'lost', 'status.disconnected');
   if (kind === 'bye') {
-    showSheet({ title: 'Camera disconnected', text: 'The camera phone ended the session.' });
+    showSheet({ title: t('sheet.cameraLeftTitle'), text: t('sheet.cameraLeftText') });
   } else {
-    showSheet({ title: 'Connection lost', text: 'The phones stopped talking to each other. Pairing again needs both codes, like the first time.', hint: kind === 'failed' });
+    showSheet({ title: t('sheet.lostTitle'), text: t('sheet.lostText'), hint: kind === 'failed' });
   }
 }
 
@@ -220,7 +226,7 @@ function markLive() {
   if (s.hasFrames) return;
   s.hasFrames = true;
   hideSheet();
-  setStatus('viewer-status', 'live', 'Live');
+  setStatus('viewer-status', 'live', 'status.live');
   layoutStage();
 }
 remote.addEventListener('loadeddata', markLive);
@@ -260,7 +266,7 @@ function onMessage(msg) {
       void stage.offsetWidth;
       stage.classList.add('snap');
       break;
-    case MSG.ERROR: toast(msg.message, 4000); break;
+    case MSG.ERROR: toast(t(`remote.${msg.code}`), 4000); break;
     case MSG.BYE:
       s.unwatch?.();
       onLost('bye');
@@ -271,7 +277,7 @@ function onMessage(msg) {
 
 function applyStatus(msg) {
   s.facing = msg.facing === 'user' ? 'user' : 'environment';
-  $('switch-label').textContent = s.facing === 'user' ? 'Front' : 'Rear';
+  setText($('switch-label'), s.facing === 'user' ? 'viewer.front' : 'viewer.rear');
   $('switch-label').dataset.ready = '1';
   $('btn-switch').disabled = false;
   $('btn-switch').classList.toggle('unavailable', msg.canSwitch === false);
@@ -309,10 +315,15 @@ export function shutter() {
 
 export function cycleTimer() {
   s.timerIndex = (s.timerIndex + 1) % TIMERS.length;
-  const t = TIMERS[s.timerIndex];
-  $('timer-label').textContent = t ? `${t}s` : 'Off';
-  $('btn-timer').setAttribute('aria-label', t ? `Self-timer: ${t} seconds` : 'Self-timer: off');
-  $('btn-timer').classList.toggle('on', t > 0);
+  const n = TIMERS[s.timerIndex];
+  if (n) {
+    setText($('timer-label'), 'viewer.timerSeconds', { n });
+    setLabel($('btn-timer'), 'viewer.timerLabel', { n });
+  } else {
+    setText($('timer-label'), 'viewer.timerOff');
+    setLabel($('btn-timer'), 'viewer.timerLabelOff');
+  }
+  $('btn-timer').classList.toggle('on', n > 0);
 }
 
 export function rotate() {
@@ -348,14 +359,14 @@ function showCountdown(n) {
   void el.offsetWidth;
   el.classList.add('pulse');
   $('btn-shutter').classList.add('cancel');
-  $('btn-shutter').setAttribute('aria-label', 'Cancel the self-timer');
+  setLabel($('btn-shutter'), 'viewer.cancelTimer');
 }
 
 function hideCountdown() {
   s.counting = false;
   $('countdown').hidden = true;
   $('btn-shutter').classList.remove('cancel');
-  $('btn-shutter').setAttribute('aria-label', 'Take photo');
+  setLabel($('btn-shutter'), 'viewer.takePhoto');
 }
 
 // Fit the (possibly rotated) video inside the stage, contain-style, so the
@@ -380,7 +391,7 @@ function openReview({ developing, aspect }) {
   $('polaroid').classList.remove('developed');
   if (developing) {
     $('review-img').removeAttribute('src');
-    $('review-caption').textContent = 'Developing…';
+    setText($('review-caption'), 'viewer.developing');
     $('review-size').textContent = '';
     $('btn-save').disabled = true;
     $('btn-share').hidden = true;
@@ -405,7 +416,8 @@ function gotPhoto(blob, meta) {
   };
   img.src = s.photo.url;
   setDevelop(1);
-  $('review-caption').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  delete $('review-caption').dataset.i18n; // a time, not a phrase
+  $('review-caption').textContent = new Date().toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
   $('review-size').textContent = size;
   $('btn-save').disabled = false;
   $('btn-share').hidden = !offerSeparateShare(file);
@@ -431,7 +443,7 @@ export function closeReview() {
 export function savePhoto() {
   if (!s.photo) return;
   save(s.photo.file).then((result) => {
-    if (result === 'downloaded') toast('Saved to Downloads');
+    if (result === 'downloaded') toast(t('common.savedToDownloads'));
   });
 }
 

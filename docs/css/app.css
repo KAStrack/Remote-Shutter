@@ -71,7 +71,10 @@ html, body {
 }
 
 body {
-  font-family: 'Jost', ui-rounded, 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  /* Jost has no CJK glyphs, so Chinese falls through to the system's own
+     Simplified Chinese face, glyph by glyph. */
+  font-family: 'Jost', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Source Han Sans SC',
+    'Microsoft YaHei', ui-rounded, 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
   font-weight: 450;
   font-size: 17px;
   line-height: 1.45;
@@ -133,7 +136,22 @@ button:disabled { cursor: default; }
 }
 
 .home-head {
+  position: relative;
   padding-bottom: 28px;
+}
+
+.lang-btn {
+  position: absolute;
+  right: 0;
+  top: calc(var(--safe-t) + 35px + 4px);
+  min-height: 36px;
+  padding: 4px 14px;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 550;
 }
 
 .stripe {
@@ -156,6 +174,13 @@ button:disabled { cursor: default; }
   letter-spacing: -0.035em;
   text-transform: lowercase;
   max-width: 6ch;
+}
+
+:lang(zh-Hans) .wordmark {
+  max-width: none;
+  font-size: clamp(44px, 14vw, 72px);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
 }
 
 .tagline {

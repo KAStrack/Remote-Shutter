@@ -1,6 +1,8 @@
 // Camera access and still capture. Stills always come from the camera
 // phone's own full-resolution track, never from the received preview.
 
+import { t } from './i18n.js';
+
 const JPEG_QUALITY = 0.92;
 // Keep canvases under iOS's ~16.7 MP limit and phones' memory comfortable.
 const MAX_PHOTO_PIXELS = 16_000_000;
@@ -35,17 +37,17 @@ export function cameraErrorMessage(err) {
   switch (err?.name) {
     case 'NotAllowedError':
     case 'SecurityError':
-      return 'Camera access is blocked. Allow the camera for this site in your browser settings, then try again.';
+      return t('cameraError.blocked');
     case 'NotFoundError':
     case 'OverconstrainedError':
-      return 'No camera was found on this phone.';
+      return t('cameraError.notFound');
     case 'NotReadableError':
     case 'AbortError':
-      return 'The camera is busy. Close other apps that use the camera, then try again.';
+      return t('cameraError.busy');
     case 'NotSupportedError':
-      return 'This browser can’t use the camera. Try Safari on iPhone or Chrome on Android.';
+      return t('cameraError.unsupported');
     default:
-      return `The camera didn’t start (${err?.message || err}).`;
+      return t('cameraError.other', { detail: err?.message || err });
   }
 }
 

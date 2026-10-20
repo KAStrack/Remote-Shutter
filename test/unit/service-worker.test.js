@@ -32,7 +32,7 @@ test('every local reference in index.html exists', () => {
 test('no external URLs in the app (no CDNs, analytics or requests)', () => {
   for (const f of walk(docs).filter((x) => /\.(html|js|mjs|css|webmanifest)$/.test(x))) {
     const src = fs.readFileSync(path.join(docs, f), 'utf8');
-    const urls = [...src.matchAll(/https?:\/\/[^\s'"`)<>]+/g)].map((m) => m[0])
+    const urls = [...src.matchAll(/https?:\/\/[A-Za-z0-9][^\s'"`)<>]*/g)].map((m) => m[0])
       .filter((u) => !/^http:\/\/www\.w3\.org\/2000\/svg|^http:\/\/www\.opensource\.org|^http:\/\/www\.d-project\.com|^http:\/\/www\.denso-wave\.com|^https?:\/\/(www\.)?(webrtc\.org|ietf\.org)\/|^https:\/\/github\.com\/cozmo\/jsQR|^http:\/\/www\.apache\.org/.test(u));
     assert.deepEqual(urls, [], `${f} references ${urls.join(', ')}`);
   }

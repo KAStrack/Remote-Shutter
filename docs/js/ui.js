@@ -1,4 +1,5 @@
 // Small DOM helpers shared by both roles.
+import { setText } from './i18n.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -22,11 +23,12 @@ export function toast(text, ms = 2600) {
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
-// Status pill: state is one of connecting | live | warn | lost.
-export function setStatus(id, state, text) {
+// Status pill: state is one of connecting | live | warn | lost; key is a
+// translation key such as 'status.live'.
+export function setStatus(id, state, key) {
   const el = $(id);
   el.dataset.state = state;
-  el.querySelector('.status-text').textContent = text;
+  setText(el.querySelector('.status-text'), key);
 }
 
 export function showProblem(title, text, retry) {
