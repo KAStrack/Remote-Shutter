@@ -19,8 +19,8 @@ const jsQR = (() => {
 })();
 const load = (name) => fs.readFileSync(path.join(fixtures, `${name}.sdp`), 'utf8');
 
-// A realistic GitHub Pages URL; the actual one is used at runtime.
-const APP_URL = 'https://your-username.github.io/remote-shutter/';
+// The real GitHub Pages URL (at runtime the page uses its own address).
+const APP_URL = 'https://kastrack.github.io/Remote-Shutter/';
 // Comfortable for a phone camera at arm's length on a phone screen.
 const MAX_VERSION = 10;
 

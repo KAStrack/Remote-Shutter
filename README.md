@@ -2,6 +2,8 @@
 
 Use one phone as a camera and another as its live viewfinder and shutter button.
 
+**Open it on both phones: [kastrack.github.io/Remote-Shutter](https://kastrack.github.io/Remote-Shutter/)**
+
 It's for the photos you can't line up from behind the camera: the back of the TV, over a crowd, a camera pushed right back against the wall, under the sink. It also works for selfies, where you check the framing from where you're standing.
 
 - **No app, no account, no server.** It's a static web page. The phones talk directly to each other over your Wi-Fi.
@@ -10,7 +12,7 @@ It's for the photos you can't line up from behind the camera: the back of the TV
 
 ## Using it
 
-1. Open the page on both phones, on the **same Wi-Fi** or with one phone on the other's **hotspot**.
+1. Open [the app](https://kastrack.github.io/Remote-Shutter/) on both phones, on the **same Wi-Fi** or with one phone on the other's **hotspot**.
 2. On the phone that will take the photo, tap **This phone is the camera**. It shows a code.
 3. On the other phone, open the normal **Camera app** and point it at that code. Tap the link that pops up, then tap **Connect**.
 4. The viewer now shows a reply code. On the camera phone, tap **Next: scan the reply** and point it at that code.
@@ -21,9 +23,8 @@ Then prop the camera phone up and use the viewer. It has a shutter button, a sel
 
 Everything the site needs is in `docs/`. There's no build step.
 
-1. Push this repository to GitHub.
-2. Go to **Settings → Pages**, choose **Deploy from a branch**, and pick `main` and the `/docs` folder.
-3. The app will be at `https://<user>.github.io/<repo>/`. All paths are relative, so any repo name works.
+1. Go to the repository's **Settings → Pages**, choose **Deploy from a branch**, and pick `main` and the `/docs` folder.
+2. The app is published at <https://kastrack.github.io/Remote-Shutter/>. All paths are relative, so a fork works at its own `https://<user>.github.io/<repo>/` without changes.
 
 When you change any file in `docs/`, bump `VERSION` in `docs/sw.js`. That's how installed copies of the app pick up the new release. A unit test checks that the service worker's file list matches `docs/`.
 
@@ -69,16 +70,16 @@ The other side rebuilds a complete SDP from a template. The payload is deflated 
 
 ### Measured QR sizes
 
-From `npm test` (`test/unit/payload-size.test.js`), using real Chrome and Safari SDP and a 47-character Pages URL:
+From `npm test` (`test/unit/payload-size.test.js`), using real Chrome and Safari SDP and the real 42-character Pages URL:
 
 | Scenario | Offer bytes | Offer link | Offer QR | Answer bytes | Answer QR |
 |---|---|---|---|---|---|
-| Wi-Fi, one IPv4 | 87 | 190 chars | version 8 (49×49) | 79 | version 6 (41×41) |
-| Wi-Fi + mobile data | 94 | 201 chars | version 9 (53×53) | 86 | version 6 |
-| iPhone hotspot host | 94 | 201 chars | version 9 | 86 | version 6 |
-| Four IPv4 (worst case kept) | 108 | 223 chars | version 9 | 100 | version 7 (45×45) |
-| IPv6 only, two | 112 | 230 chars | version 9 | 102 | version 7 |
-| mDNS only, two | 109 | 225 chars | version 9 | 100 | version 7 |
+| Wi-Fi, one IPv4 | 87 | 185 chars | version 8 (49×49) | 79 | version 6 (41×41) |
+| Wi-Fi + mobile data | 94 | 196 chars | version 8 | 86 | version 6 |
+| iPhone hotspot host | 94 | 196 chars | version 8 | 86 | version 6 |
+| Four IPv4 (worst case kept) | 108 | 218 chars | version 9 (53×53) | 100 | version 7 (45×45) |
+| IPv6 only, two | 112 | 225 chars | version 9 | 102 | version 7 |
+| mDNS only, two | 109 | 220 chars | version 9 | 100 | version 7 |
 
 Every case uses error-correction level **M** with a 4-module quiet zone. For comparison, the raw SDP wouldn't fit in any QR code at level M: the largest, version 40, holds 2,331 bytes. Because the single-code path fits comfortably, there's no animated multi-part QR fallback.
 
