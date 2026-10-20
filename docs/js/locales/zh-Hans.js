@@ -14,9 +14,8 @@ export default {
   'home.how1Html': '在相机手机上选择<strong>这台手机当相机</strong>，用另一台手机扫描它显示的二维码。',
   'home.how2Html': '另一台手机显示自己的二维码后，在相机手机上点<strong>下一步</strong>。',
   'home.how3': '用相机手机对准那个二维码，就连上了。',
-  'home.showQr': '在另一台手机上打开',
-  'home.hideQr': '收起二维码',
-  'home.qrCaption': '扫码打开遥控快门',
+  'home.qrTitle': '在另一台手机上打开',
+  'home.qrText': '用另一台手机的相机扫描。如果这台手机当相机，可以跳过这一步。',
   'home.qrLabel': '打开遥控快门的二维码',
   'home.fine': '视频和照片直接在两台手机之间传输，不会上传到任何地方。',
 

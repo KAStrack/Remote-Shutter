@@ -78,14 +78,15 @@ async function waitForPhotoInner(viewer, previousSrc) {
   }, previousSrc, { timeout: 20000 });
 }
 
-test('home: "Open on another phone" shows a code for this page', async () => {
+test('home: always shows a code that opens this page', async () => {
   const { browser, page, errors } = await openApp('chromium');
   try {
-    await page.click('#btn-app-qr');
-    assert.equal(await page.getAttribute('#btn-app-qr', 'aria-expanded'), 'true');
+    assert.equal(await page.isVisible('#app-qr-image svg'), true);
     assert.equal(await readQr(page, '#app-qr-image'), `${origin}/`);
-    await page.click('#btn-app-qr');
-    assert.equal(await page.$eval('#app-qr', (el) => el.hidden), true);
+    // Still there, and still decodes, after switching language.
+    await page.click('[data-action="switch-language"]');
+    assert.equal(await readQr(page, '#app-qr-image'), `${origin}/`);
+    assert.equal(await page.getAttribute('#app-qr-image svg', 'aria-label'), '打开遥控快门的二维码');
     assert.deepEqual(errors, []);
   } finally {
     await closeAll(browser);

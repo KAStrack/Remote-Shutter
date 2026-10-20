@@ -50,19 +50,22 @@
       </button>
     </div>
 
+    <!-- A code for this page's own address: the quickest way to get the
+         other phone here (the camera's pairing code also opens the app). -->
+    <section class="app-qr" aria-labelledby="app-qr-title">
+      <div class="app-qr-code" id="app-qr-image"></div>
+      <div class="app-qr-text">
+        <h2 class="app-qr-title" id="app-qr-title" data-i18n="home.qrTitle">Open on another phone</h2>
+        <p data-i18n="home.qrText">Scan with the other phone’s camera. Not needed if this phone is the camera.</p>
+      </div>
+    </section>
+
     <p class="how-note" data-i18n="home.howNote">Put both phones on the same Wi-Fi, or one on the other's hotspot. Then:</p>
     <ol class="how">
       <li><span data-i18n-html="home.how1Html">On the camera phone, choose <strong>This phone is the camera</strong>. Scan its code with the other phone.</span></li>
       <li><span data-i18n-html="home.how2Html">When the other phone shows its own code, tap <strong>Next</strong> on the camera phone.</span></li>
       <li><span data-i18n="home.how3">Point the camera phone at that code. You're connected.</span></li>
     </ol>
-    <button class="link-btn" type="button" data-action="toggle-app-qr" id="btn-app-qr" aria-expanded="false" aria-controls="app-qr" data-i18n="home.showQr">Open on another phone</button>
-    <div class="app-qr" id="app-qr" hidden>
-      <div class="print">
-        <div class="print-image" id="app-qr-image"></div>
-        <p class="print-caption" data-i18n="home.qrCaption">Scan to open Remote Shutter</p>
-      </div>
-    </div>
 
     <p class="fine" data-i18n="home.fine">Video and photos go straight between your phones. Nothing is uploaded.</p>
   </section>

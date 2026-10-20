@@ -49,32 +49,21 @@ function handleLink() {
   return true;
 }
 
-// A code for this page's own address, so the second phone (or a laptop's
-// visitor) can open the app without typing.
-function toggleAppQr() {
-  const box = $('app-qr');
-  const btn = $('btn-app-qr');
-  box.hidden = !box.hidden;
-  btn.setAttribute('aria-expanded', String(!box.hidden));
-  btn.dataset.i18n = box.hidden ? 'home.showQr' : 'home.hideQr';
-  btn.textContent = t(btn.dataset.i18n);
-  if (!box.hidden && !$('app-qr-image').firstChild) {
-    $('app-qr-image').append(qrSvg(appUrl(), '', t('home.qrLabel')));
-  }
-  if (!box.hidden) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+// The start screen's code for this page's own address, so the other phone
+// can open the app without typing. Re-drawn on a language switch because its
+// accessible name is translated.
+function drawAppQr() {
+  $('app-qr-image').replaceChildren(qrSvg(appUrl(), '', t('home.qrLabel')));
 }
 
 function switchLanguage() {
   setLanguage(lang() === 'zh-Hans' ? 'en' : 'zh-Hans', { remember: true });
-  // The home QR's accessible name was built in the old language.
-  $('app-qr-image').replaceChildren();
-  if (!$('app-qr').hidden) $('app-qr-image').append(qrSvg(appUrl(), '', t('home.qrLabel')));
+  drawAppQr();
 }
 
 const actions = {
   home: goHome,
   'switch-language': switchLanguage,
-  'toggle-app-qr': toggleAppQr,
   'role-camera': () => begin('camera', camera.start),
   'role-viewer': () => begin('viewer', () => viewer.startFromHome()),
 
@@ -125,6 +114,7 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('hashchange', handleLink);
 
 initLanguage();
+drawAppQr();
 if (!handleLink()) show('home');
 
 if ('serviceWorker' in navigator && window.isSecureContext) {

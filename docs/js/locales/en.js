@@ -15,9 +15,8 @@ export default {
   'home.how1Html': 'On the camera phone, choose <strong>This phone is the camera</strong>. Scan its code with the other phone.',
   'home.how2Html': 'When the other phone shows its own code, tap <strong>Next</strong> on the camera phone.',
   'home.how3': 'Point the camera phone at that code. You’re connected.',
-  'home.showQr': 'Open on another phone',
-  'home.hideQr': 'Hide the code',
-  'home.qrCaption': 'Scan to open Remote Shutter',
+  'home.qrTitle': 'Open on another phone',
+  'home.qrText': 'Scan with the other phone’s camera. Not needed if this phone is the camera.',
   'home.qrLabel': 'Code that opens Remote Shutter',
   'home.fine': 'Video and photos go straight between your phones. Nothing is uploaded.',
 

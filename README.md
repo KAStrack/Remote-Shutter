@@ -6,7 +6,7 @@ Use one phone as a camera and another as its live viewfinder and shutter button.
 
 <a href="https://kastrack.github.io/Remote-Shutter/"><img src="assets/app-qr.svg" width="160" alt="QR code that opens https://kastrack.github.io/Remote-Shutter/"></a>
 
-Once one phone has the app open, **Open on another phone** on its start screen shows this code for the other one.
+The app's start screen shows the same code, so a phone with the app bookmarked or installed can bring the other phone straight to it. (When that phone is the camera, the other phone doesn't even need it: the camera's pairing code opens the app too.)
 
 It's for the photos you can't line up from behind the camera: the back of the TV, over a crowd, a camera pushed right back against the wall, under the sink. It also works for selfies, where you check the framing from where you're standing.
 
