@@ -1,6 +1,6 @@
 // Offline app shell. Bump VERSION whenever any file below changes, so phones
 // pick up the new release (the unit tests check this list matches docs/).
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `remote-shutter-${VERSION}`;
 
 const ASSETS = [

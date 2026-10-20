@@ -1,6 +1,7 @@
 // Entry point: picks a role, routes taps to it, and handles pairing links.
 import { $, show, showProblem, retryProblem, hideSheet } from './ui.js';
-import { offerFromText } from './webrtc.js';
+import { offerFromText, appUrl } from './webrtc.js';
+import { qrSvg } from './qr.js';
 import * as camera from './roles/camera.js';
 import * as viewer from './roles/viewer.js';
 
@@ -47,8 +48,23 @@ function handleLink() {
   return true;
 }
 
+// A code for this page's own address, so the second phone (or a laptop's
+// visitor) can open the app without typing.
+function toggleAppQr() {
+  const box = $('app-qr');
+  const btn = $('btn-app-qr');
+  box.hidden = !box.hidden;
+  btn.setAttribute('aria-expanded', String(!box.hidden));
+  btn.textContent = box.hidden ? 'Open on another phone' : 'Hide the code';
+  if (!box.hidden && !$('app-qr-image').firstChild) {
+    $('app-qr-image').append(qrSvg(appUrl(), '', 'Code that opens Remote Shutter'));
+  }
+  if (!box.hidden) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 const actions = {
   home: goHome,
+  'toggle-app-qr': toggleAppQr,
   'role-camera': () => begin('camera', camera.start),
   'role-viewer': () => begin('viewer', () => viewer.startFromHome()),
 

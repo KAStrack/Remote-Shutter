@@ -9,13 +9,13 @@ const COMFORTABLE_VERSION = 12;
 
 // `prefix` (e.g. the app URL) is encoded in byte mode; `payload` must be
 // base32 so it can use the denser alphanumeric mode. Scanners join the two
-// segments transparently.
-export function makeQr(prefix, payload) {
+// segments transparently. A plain link needs only the prefix.
+export function makeQr(prefix, payload = '') {
   let qr;
   for (const ecl of ['M', 'L']) {
     qr = qrcode(0, ecl);
     if (prefix) qr.addData(prefix, 'Byte');
-    qr.addData(payload, 'Alphanumeric');
+    if (payload) qr.addData(payload, 'Alphanumeric');
     qr.make();
     if ((qr.getModuleCount() - 17) / 4 <= COMFORTABLE_VERSION) break;
   }
@@ -27,16 +27,22 @@ export function makeQr(prefix, payload) {
   };
 }
 
-// Returns an <svg> that scales crisply to whatever size CSS gives it.
-export function qrSvg(prefix, payload, label = 'Pairing code') {
-  const qr = makeQr(prefix, payload);
-  const n = qr.size + QUIET_ZONE * 2;
+// SVG path data for the dark modules, offset by the quiet zone. Returns the
+// path and the full side length in modules.
+export function qrPath(qr) {
   let d = '';
   for (let r = 0; r < qr.size; r++) {
     for (let c = 0; c < qr.size; c++) {
       if (qr.isDark(r, c)) d += `M${c + QUIET_ZONE} ${r + QUIET_ZONE}h1v1h-1z`;
     }
   }
+  return { d, n: qr.size + QUIET_ZONE * 2 };
+}
+
+// Returns an <svg> that scales crisply to whatever size CSS gives it.
+export function qrSvg(prefix, payload, label = 'Pairing code') {
+  const qr = makeQr(prefix, payload);
+  const { d, n } = qrPath(qr);
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('xmlns', ns); // so the markup also works as a standalone image

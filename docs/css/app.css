@@ -263,6 +263,32 @@ button:disabled { cursor: default; }
   transform: translateY(-1px);
 }
 
+.link-btn {
+  justify-self: start;
+  align-self: flex-start;
+  margin: 24px 0 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--s-orange);
+}
+
+.app-qr {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 8px;
+}
+.app-qr .print {
+  width: min(64vw, 260px);
+  box-shadow: 0 2px 0 var(--plastic-edge), 0 10px 24px rgb(0 0 0 / 0.18);
+}
+.app-qr .print-caption { text-align: center; }
+
 .fine {
   margin: 28px 0 0;
   font-size: 13px;

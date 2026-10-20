@@ -78,6 +78,20 @@ async function waitForPhotoInner(viewer, previousSrc) {
   }, previousSrc, { timeout: 20000 });
 }
 
+test('home: "Open on another phone" shows a code for this page', async () => {
+  const { browser, page, errors } = await openApp('chromium');
+  try {
+    await page.click('#btn-app-qr');
+    assert.equal(await page.getAttribute('#btn-app-qr', 'aria-expanded'), 'true');
+    assert.equal(await readQr(page, '#app-qr-image'), `${origin}/`);
+    await page.click('#btn-app-qr');
+    assert.equal(await page.$eval('#app-qr', (el) => el.hidden), true);
+    assert.deepEqual(errors, []);
+  } finally {
+    await closeAll(browser);
+  }
+});
+
 const PAIRS = process.env.PAIR ? [process.env.PAIR.split(',')] : [['chromium', 'chromium'], ['chromium', 'webkit'], ['webkit', 'chromium']];
 for (const [camEngine, viewEngine] of PAIRS) {
   test(`app: camera ${camEngine}, viewer ${viewEngine}`, { timeout: 120000 }, async () => {

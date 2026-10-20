@@ -4,6 +4,10 @@ Use one phone as a camera and another as its live viewfinder and shutter button.
 
 **Open it on both phones: [kastrack.github.io/Remote-Shutter](https://kastrack.github.io/Remote-Shutter/)**
 
+<a href="https://kastrack.github.io/Remote-Shutter/"><img src="assets/app-qr.svg" width="160" alt="QR code that opens https://kastrack.github.io/Remote-Shutter/"></a>
+
+Once one phone has the app open, **Open on another phone** on its start screen shows this code for the other one.
+
 It's for the photos you can't line up from behind the camera: the back of the TV, over a crowd, a camera pushed right back against the wall, under the sink. It also works for selfies, where you check the framing from where you're standing.
 
 - **No app, no account, no server.** It's a static web page. The phones talk directly to each other over your Wi-Fi.
@@ -118,6 +122,7 @@ Tools in `test/tools/`:
 |---|---|
 | `vendor.sh` | Refreshes `docs/vendor/` and the font from `node_modules` |
 | `icons.mjs` | Renders the PNG icons from `docs/icons/icon.svg` |
+| `app-qr.mjs` | Regenerates `assets/app-qr.svg`, the README's QR code for the published app |
 | `capture-sdp-fixtures.mjs` | Re-captures real SDP from each engine |
 | `screens.mjs` | Screenshots every screen of a paired session |
 
