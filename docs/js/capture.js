@@ -8,17 +8,50 @@ const JPEG_QUALITY = 0.92;
 const MAX_PHOTO_PIXELS = 16_000_000;
 const TAKE_PHOTO_TIMEOUT_MS = 6000;
 
-export async function openCamera(facing = 'environment') {
+// Opens a camera by direction, or exactly the given device when deviceId is set.
+export async function openCamera(facing = 'environment', deviceId = null) {
   if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error('No camera API'), { name: 'NotSupportedError' });
   return navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
-      facingMode: { ideal: facing },
+      ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: facing } }),
       width: { ideal: 3840 },
       height: { ideal: 2160 },
       frameRate: { ideal: 30 },
     },
   });
+}
+
+// Which way each camera we've opened really faces, from its track settings.
+const knownFacing = new Map();
+
+export function rememberFacing(deviceId, facing) {
+  if (deviceId && facing) knownFacing.set(deviceId, facing);
+}
+
+// Every camera on this phone in switching order: front ones first, then rear,
+// then any we can't place. facing is 'user', 'environment' or '' (unknown).
+export async function listCameras() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const rank = { user: 0, environment: 1, '': 2 };
+  return devices
+    .filter((d) => d.kind === 'videoinput' && d.deviceId)
+    .map((d) => ({ deviceId: d.deviceId, facing: knownFacing.get(d.deviceId) || guessFacing(d) }))
+    .sort((a, b) => rank[a.facing] - rank[b.facing]); // stable: keeps the phone's own order within a group
+}
+
+// Chrome reports a device's facing directly; elsewhere only the label says
+// (e.g. "camera2 1, facing front", "Back Ultra Wide Camera", "Caméra avant").
+// Labels are filled in once camera permission is granted.
+function guessFacing(device) {
+  let modes = [];
+  try { modes = device.getCapabilities?.().facingMode || []; } catch { /* not supported */ }
+  if (modes.includes('user')) return 'user';
+  if (modes.includes('environment')) return 'environment';
+  const label = device.label.toLowerCase();
+  if (/front|user|selfie|facetime|avant|anterior|前|전면/.test(label)) return 'user';
+  if (/back|rear|environment|arrière|rück|tras|posterior|后|後|背|후면/.test(label)) return 'environment';
+  return '';
 }
 
 // Viewer side: ask for camera permission and drop it straight away. While

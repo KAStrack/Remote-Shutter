@@ -276,8 +276,15 @@ function onMessage(msg) {
 }
 
 function applyStatus(msg) {
-  s.facing = msg.facing === 'user' ? 'user' : 'environment';
-  setText($('switch-label'), s.facing === 'user' ? 'viewer.front' : 'viewer.rear');
+  s.facing = msg.facing;
+  // Front / Rear, or Front 1, Front 2... when several face the same way.
+  const [one, numbered] = {
+    user: ['viewer.front', 'viewer.frontN'],
+    environment: ['viewer.rear', 'viewer.rearN'],
+  }[msg.facing] || ['viewer.otherCamera', 'viewer.otherCameraN'];
+  const n = Number(msg.cameraNumber) || 0;
+  if (n) setText($('switch-label'), numbered, { n });
+  else setText($('switch-label'), one);
   $('switch-label').dataset.ready = '1';
   $('btn-switch').disabled = false;
   $('btn-switch').classList.toggle('unavailable', msg.canSwitch === false);

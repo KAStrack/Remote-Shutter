@@ -176,11 +176,8 @@
 
   <!-- ===================================================== viewer: live -->
   <section hidden class="screen screen-live" data-screen="viewer-live">
-    <div class="stage" id="stage">
-      <video id="remote-video" class="remote-video" playsinline muted autoplay></video>
-    </div>
-    <button class="tap-to-play" type="button" data-action="play-video" id="btn-play" hidden data-i18n="viewer.tapToPlay">Tap to show the live view</button>
-
+    <!-- Nothing sits on top of the picture: bars above and below it in
+         portrait, rails beside it in landscape. -->
     <header class="live-top">
       <span class="status" id="viewer-status"><span class="dot"></span><span class="status-text" data-i18n="status.connecting">Connecting…</span></span>
       <button class="icon-btn" type="button" data-action="disconnect" aria-label="Disconnect" data-i18n-label="viewer.disconnect">
@@ -188,13 +185,17 @@
       </button>
     </header>
 
+    <div class="stage" id="stage">
+      <video id="remote-video" class="remote-video" playsinline muted autoplay></video>
+    </div>
+    <button class="tap-to-play" type="button" data-action="play-video" id="btn-play" hidden data-i18n="viewer.tapToPlay">Tap to show the live view</button>
+    <div class="countdown" id="countdown" aria-live="assertive" hidden></div>
+
     <div class="zoom" id="zoom" hidden>
       <label class="visually-hidden" for="zoom-range" data-i18n="viewer.zoom">Zoom</label>
       <input type="range" id="zoom-range" min="1" max="2" step="0.1" value="1">
       <output id="zoom-value" for="zoom-range">1×</output>
     </div>
-
-    <div class="countdown" id="countdown" aria-live="assertive" hidden></div>
 
     <footer class="deck">
       <button class="deck-btn" type="button" data-action="cycle-timer" id="btn-timer" aria-label="Self-timer: off" data-i18n-label="viewer.timerLabelOff">
@@ -206,7 +207,7 @@
         <span class="deck-label" id="rotate-label">0°</span>
       </button>
       <button class="shutter" type="button" data-action="shutter" id="btn-shutter" aria-label="Take photo" data-i18n-label="viewer.takePhoto" disabled><span></span></button>
-      <button class="deck-btn" type="button" data-action="switch-camera" id="btn-switch" aria-label="Switch between front and rear camera" data-i18n-label="viewer.switchCamera">
+      <button class="deck-btn" type="button" data-action="switch-camera" id="btn-switch" aria-label="Switch camera" data-i18n-label="viewer.switchCamera">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13.5a2.5 2.5 0 0 0 4.6 1.4M14.5 12.5a2.5 2.5 0 0 0-4.6-1.4"/><path d="M14.5 15.5v-1.6h-1.6M9.5 10.5v1.6h1.6"/></svg>
         <span class="deck-label" id="switch-label" data-i18n="viewer.rear">Rear</span>
       </button>

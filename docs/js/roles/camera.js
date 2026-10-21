@@ -2,7 +2,7 @@
 // the stills, runs the self-timer, and streams a light preview to the viewer.
 import { $, show, currentScreen, toast, setStatus, showProblem, showSheet, hideSheet, flash, keepAwake } from '../ui.js';
 import { createCameraPeer, acceptAnswer, applyPreviewEncoding, watchConnection, offerFromText, appUrl } from '../webrtc.js';
-import { openCamera, cameraErrorMessage, capturePhoto, zoomInfo, setZoom } from '../capture.js';
+import { openCamera, listCameras, rememberFacing, cameraErrorMessage, capturePhoto, zoomInfo, setZoom } from '../capture.js';
 import { MSG, send, listen, sendPhoto } from '../protocol.js';
 import { qrSvg, startScanner } from '../qr.js';
 import { photoFile, save } from '../share.js';
@@ -14,7 +14,8 @@ const video = $('cam-video');
 const s = {
   stream: null,
   track: null,
-  facing: 'environment',
+  facing: 'environment', // '' when the phone doesn't say which way it faces
+  deviceId: null,
   pc: null,
   dc: null,
   sender: null,
@@ -34,7 +35,7 @@ export async function start() {
   show('camera-offer');
   resetOfferCard('camera.startingCamera');
   try {
-    await useStream(await openCamera(s.facing));
+    await useStream(await openCamera(s.facing || 'environment'));
   } catch (err) {
     showProblem(t('camera.startFailedTitle'), cameraErrorMessage(err), start);
     return;
@@ -58,6 +59,10 @@ async function useStream(stream) {
   s.stream = stream;
   s.track = stream.getVideoTracks()[0];
   s.track.addEventListener('ended', onTrackEnded);
+  const settings = s.track.getSettings?.() || {};
+  s.deviceId = settings.deviceId || null;
+  rememberFacing(s.deviceId, settings.facingMode);
+  s.facing = settings.facingMode || (await cameraList()).find((c) => c.deviceId === s.deviceId)?.facing || '';
   video.srcObject = stream;
   video.classList.toggle('mirror', s.facing === 'user');
   await startVideo(video);
@@ -215,18 +220,26 @@ function onMessage(msg) {
   }
 }
 
+async function cameraList() {
+  try {
+    return await listCameras();
+  } catch {
+    return [];
+  }
+}
+
 async function sendStatus() {
   if (!s.dc) return;
-  let canSwitch = true;
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    canSwitch = devices.filter((d) => d.kind === 'videoinput').length > 1;
-  } catch { /* assume yes */ }
+  const cameras = await cameraList();
+  // "Front 2": numbered only when several cameras face the same way.
+  const sameWay = cameras.filter((c) => c.facing === s.facing);
+  const number = sameWay.length > 1 ? sameWay.findIndex((c) => c.deviceId === s.deviceId) + 1 : 0;
   const settings = s.track?.getSettings?.() || {};
   send(s.dc, MSG.STATUS, {
     facing: s.facing,
+    cameraNumber: number,
     zoom: zoomInfo(s.track),
-    canSwitch,
+    canSwitch: cameras.length !== 1, // can't list them: let the viewer try
     rotation: s.rotation,
     width: settings.width,
     height: settings.height,
@@ -323,21 +336,28 @@ function stopTimer(notify) {
 
 // ------------------------------------------------------------ camera controls
 
+// Steps through every camera in turn: front 1 -> front 2 -> rear -> front 1.
 async function switchCamera() {
   if (s.busy || s.timer) return;
-  const previous = s.facing;
-  const next = previous === 'environment' ? 'user' : 'environment';
+  const cameras = await cameraList();
+  const previous = { facing: s.facing, deviceId: s.deviceId };
+  let next;
+  if (cameras.length) {
+    const at = cameras.findIndex((c) => c.deviceId === previous.deviceId);
+    next = cameras[(at + 1) % cameras.length];
+  } else {
+    // Can't list them: fall back to flipping direction.
+    next = { facing: previous.facing === 'user' ? 'environment' : 'user', deviceId: null };
+  }
   // iOS allows one capture at a time: stop the old track first.
   s.track?.removeEventListener('ended', onTrackEnded);
   s.stream?.getTracks().forEach((t) => t.stop());
   try {
-    s.facing = next;
-    await useStream(await openCamera(next));
+    await useStream(await openCamera(next.facing || 'environment', next.deviceId));
   } catch (err) {
     console.warn('Switch failed', err);
-    s.facing = previous;
     try {
-      await useStream(await openCamera(previous));
+      await useStream(await openCamera(previous.facing || 'environment', previous.deviceId));
     } catch (err2) {
       send(s.dc, MSG.ERROR, { code: 'cameraFailed' });
       toast(cameraErrorMessage(err2), 5000);
@@ -370,7 +390,7 @@ function onTrackEnded() {
 async function reopenCamera() {
   if (!s.stream || s.track?.readyState === 'live') return;
   try {
-    await useStream(await openCamera(s.facing));
+    await useStream(await openCamera(s.facing || 'environment', s.deviceId));
     if (s.sender) {
       await s.sender.replaceTrack(s.track);
       await applyPreviewEncoding(s.sender, s.track);

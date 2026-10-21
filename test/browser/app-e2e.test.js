@@ -1,6 +1,7 @@
 // End-to-end through the real UI: QR codes are decoded from the rendered
 // SVGs, the camera's in-page scanner reads the viewer's reply from a video
-// stream, then shutter, self-timer, rotation and photo transfer are checked.
+// stream, then shutter, self-timer, rotation and photo transfer are checked,
+// as well as the viewer's layout and stepping through several cameras.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium, webkit } from 'playwright';
@@ -17,12 +18,15 @@ before(async () => {
 after(() => server.close());
 
 const LAUNCH = {
-  chromium: () => chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] }),
+  // cameras: how many fake cameras Chromium offers (they don't say which way they face).
+  chromium: ({ cameras = 1 } = {}) => chromium.launch({
+    args: [`--use-fake-device-for-media-stream=device-count=${cameras}`, '--use-fake-ui-for-media-stream'],
+  }),
   webkit: () => webkit.launch(),
 };
 
-async function openApp(engine, path = '/', locale = 'en-US') {
-  const browser = await LAUNCH[engine]();
+async function openApp(engine, path = '/', locale = 'en-US', options = {}) {
+  const browser = await LAUNCH[engine](options);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale });
   try { await context.grantPermissions(['camera'], { origin }); } catch { /* engine lacks it */ }
   if (engine === 'webkit') {
@@ -125,6 +129,41 @@ test('language: Simplified Chinese is picked automatically, and the switch is re
   }
 });
 
+// Pairs a new camera page with a new viewer page through both QR codes, and
+// waits until the viewer shows live video. Browsers go into `open` as they
+// launch, so the caller can close them even if pairing fails.
+async function pair({ camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US', cameras }, open) {
+  const cam = await openApp(camEngine, '/', camLocale, { cameras });
+  open.push(cam.browser);
+
+  // Camera shows its pairing code.
+  await cam.page.click('[data-action="role-camera"]');
+  const offerUrl = await readQr(cam.page, '#offer-qr');
+  assert.ok(offerUrl, 'offer QR decodes');
+  assert.ok(offerUrl.startsWith(`${origin}/#o=`), offerUrl);
+  const offerVersion = await cam.page.$eval('#offer-qr svg', (el) => Number(el.dataset.version));
+
+  // Viewer opens the link (as the native camera app would) and connects.
+  const view = await openApp(viewEngine, offerUrl.slice(origin.length), viewLocale);
+  open.push(view.browser);
+  assert.equal(await screenOf(view.page), 'viewer-intro');
+  assert.equal(await view.page.evaluate(() => location.hash), '', 'offer stripped from the URL');
+  await view.page.click('#btn-viewer-connect');
+  const answer = await readQr(view.page, '#answer-qr');
+  assert.match(answer, /^[A-Z2-7]+$/);
+  const answerSvg = await view.page.$eval('#answer-qr svg', (el) => el.outerHTML);
+
+  // Camera scans the reply with its own in-page scanner.
+  await cam.page.click('#btn-scan-reply');
+  assert.equal(await screenOf(cam.page), 'camera-scan');
+  await showToCamera(cam.page, answerSvg);
+  await cam.page.waitForFunction(() => document.body.dataset.screen === 'camera-live', null, { timeout: 20000 });
+  await restoreCamera(cam.page);
+  await view.page.waitForFunction(() => document.body.dataset.screen === 'viewer-live', null, { timeout: 20000 });
+  await view.page.waitForFunction(() => document.getElementById('viewer-status').dataset.state === 'live', null, { timeout: 15000 });
+  return { cam, view, offerVersion };
+}
+
 // [camera engine, viewer engine, camera locale, viewer locale]
 const PAIRS = process.env.PAIR ? [process.env.PAIR.split(',')] : [
   ['chromium', 'chromium'], ['chromium', 'webkit'], ['webkit', 'chromium'],
@@ -132,33 +171,9 @@ const PAIRS = process.env.PAIR ? [process.env.PAIR.split(',')] : [
 ];
 for (const [camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US'] of PAIRS) {
   test(`app: camera ${camEngine} (${camLocale}), viewer ${viewEngine} (${viewLocale})`, { timeout: 120000 }, async () => {
-    const cam = await openApp(camEngine, '/', camLocale);
-    let view;
+    const open = [];
     try {
-      // Camera shows its pairing code.
-      await cam.page.click('[data-action="role-camera"]');
-      const offerUrl = await readQr(cam.page, '#offer-qr');
-      assert.ok(offerUrl, 'offer QR decodes');
-      assert.ok(offerUrl.startsWith(`${origin}/#o=`), offerUrl);
-      const offerVersion = await cam.page.$eval('#offer-qr svg', (el) => Number(el.dataset.version));
-
-      // Viewer opens the link (as the native camera app would) and connects.
-      view = await openApp(viewEngine, offerUrl.slice(origin.length), viewLocale);
-      assert.equal(await screenOf(view.page), 'viewer-intro');
-      assert.equal(await view.page.evaluate(() => location.hash), '', 'offer stripped from the URL');
-      await view.page.click('#btn-viewer-connect');
-      const answer = await readQr(view.page, '#answer-qr');
-      assert.match(answer, /^[A-Z2-7]+$/);
-      const answerSvg = await view.page.$eval('#answer-qr svg', (el) => el.outerHTML);
-
-      // Camera scans the reply with its own in-page scanner.
-      await cam.page.click('#btn-scan-reply');
-      assert.equal(await screenOf(cam.page), 'camera-scan');
-      await showToCamera(cam.page, answerSvg);
-      await cam.page.waitForFunction(() => document.body.dataset.screen === 'camera-live', null, { timeout: 20000 });
-      await restoreCamera(cam.page);
-      await view.page.waitForFunction(() => document.body.dataset.screen === 'viewer-live', null, { timeout: 20000 });
-      await view.page.waitForFunction(() => document.getElementById('viewer-status').dataset.state === 'live', null, { timeout: 15000 });
+      const { cam, view, offerVersion } = await pair({ camEngine, viewEngine, camLocale, viewLocale }, open);
 
       // Capabilities arrive: zoom is shown exactly when the camera has it.
       await view.page.waitForFunction(() => document.getElementById('switch-label').dataset.ready === '1');
@@ -243,7 +258,63 @@ for (const [camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US'] of
       assert.deepEqual(cam.errors, []);
       assert.deepEqual(view.errors, []);
     } finally {
-      await closeAll(cam.browser, view?.browser);
+      await closeAll(...open);
     }
   });
 }
+
+// Nothing covers the picture, portrait or landscape (where the controls are
+// rails beside it), and the switch button steps through every camera.
+test('viewer: controls stay off the picture; switch cycles through all cameras', { timeout: 120000 }, async () => {
+  const open = [];
+  try {
+    const { cam, view } = await pair({ camEngine: 'chromium', viewEngine: 'chromium', cameras: 3 }, open);
+    await view.page.waitForFunction(() => document.getElementById('switch-label').dataset.ready === '1');
+    await view.page.evaluate(() => { document.getElementById('zoom').hidden = false; }); // fake cameras lack zoom
+    await view.page.waitForTimeout(300); // the stage resizes the video on the next frame
+
+    const layout = () => view.page.evaluate(() => {
+      const box = (el) => el.getBoundingClientRect();
+      const stage = box(document.getElementById('stage'));
+      const video = box(document.getElementById('remote-video'));
+      const controls = ['.live-top', '#zoom', '.deck'].map((sel) => box(document.querySelector(sel)));
+      const overlaps = controls.filter((c) => c.left < stage.right && c.right > stage.left && c.top < stage.bottom && c.bottom > stage.top);
+      return {
+        overlaps: overlaps.length,
+        videoInStage: video.left >= stage.left - 1 && video.right <= stage.right + 1 && video.top >= stage.top - 1 && video.bottom <= stage.bottom + 1,
+        stage: { width: stage.width, height: stage.height },
+        deck: { width: controls[2].width, height: controls[2].height },
+      };
+    });
+    const portrait = await layout();
+    assert.equal(portrait.overlaps, 0, 'portrait: controls overlap the picture');
+    assert.ok(portrait.videoInStage, 'portrait: video spills out of its area');
+    assert.ok(portrait.deck.width > portrait.deck.height, 'portrait: deck along the bottom');
+
+    await view.page.setViewportSize({ width: 844, height: 390 });
+    await view.page.waitForFunction(() => document.getElementById('stage').getBoundingClientRect().height > 380);
+    await view.page.waitForTimeout(300); // rotation transition
+    const landscape = await layout();
+    assert.equal(landscape.overlaps, 0, 'landscape: controls overlap the picture');
+    assert.ok(landscape.videoInStage, 'landscape: video spills out of its area');
+    assert.ok(landscape.deck.height > landscape.deck.width, 'landscape: deck down the side');
+    assert.ok(landscape.stage.width >= 844 * 0.7, `landscape: picture only ${landscape.stage.width}px wide`);
+
+    // Three cameras (none say which way they face): 1 -> 2 -> 3 -> 1.
+    const deviceId = () => cam.page.evaluate(() => document.getElementById('cam-video').srcObject.getVideoTracks()[0].getSettings().deviceId);
+    const seen = [[await view.page.textContent('#switch-label'), await deviceId()]];
+    for (let i = 0; i < 3; i++) {
+      await view.page.click('#btn-switch');
+      await view.page.waitForFunction(() => !document.getElementById('btn-switch').disabled, null, { timeout: 10000 });
+      seen.push([await view.page.textContent('#switch-label'), await deviceId()]);
+    }
+    assert.deepEqual(seen.map(([label]) => label), ['Camera 1', 'Camera 2', 'Camera 3', 'Camera 1']);
+    assert.equal(new Set(seen.slice(0, 3).map(([, id]) => id)).size, 3, 'three different cameras');
+    assert.equal(seen[3][1], seen[0][1], 'back to the first camera');
+    assert.equal(await view.page.$eval('#btn-switch', (b) => b.classList.contains('unavailable')), false);
+    assert.deepEqual(cam.errors, []);
+    assert.deepEqual(view.errors, []);
+  } finally {
+    await closeAll(...open);
+  }
+});

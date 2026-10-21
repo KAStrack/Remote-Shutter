@@ -22,7 +22,7 @@ Put both phones on the **same Wi-Fi**, or one on the other's **hotspot**, and op
 2. The other phone now shows its own code. On the camera phone, tap **Next: scan the reply**.
 3. Point the camera phone at the other phone's code. You're connected.
 
-Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, front/rear switch, and zoom where the phone supports it. Each photo appears on the viewer, and both phones can save it.
+Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, a camera switch, and zoom where the phone supports it. The controls never cover the picture: they sit above and below it in portrait, and in rails either side of it in landscape. Each photo appears on the viewer, and both phones can save it.
 
 ## Languages
 
@@ -101,6 +101,7 @@ Every case uses error-correction level **M** with a 4-module quiet zone. For com
 - **iPhone (Safari) and others:** the current video frame at its native resolution (up to 4K), saved as JPEG at quality 0.92. These are video frames, so they don't get the Camera app's HDR or Night mode processing.
 - **Orientation is baked into the pixels**, because canvas export drops EXIF. If the camera phone is propped sideways with rotation lock on, use **rotate** on the viewer; it turns both the preview and the photos.
 - **Front camera:** the preview is mirrored, like a mirror, but the saved photo is not.
+- **Switching cameras** steps through every camera the browser lists, front ones first: Front 1 → Front 2 → Rear → Front 1. Cameras are numbered only when several face the same way. Which way a camera faces comes from the browser, or failing that its name; any it can't tell are called Camera 1, Camera 2… Some phones list only one front and one rear camera; iPhones may also list each lens and the combined ones (Ultra Wide, Dual, Triple), so there are more stops.
 - **Saving:** browsers need a tap to save, so it never happens automatically.
   - On iPhone, **Save** opens the share sheet; choose **Save Image** to put the photo in Photos.
   - On Android, **Save** downloads to Downloads, which Google Photos and most galleries show. **Share…** is there too, for sending it elsewhere.
@@ -159,7 +160,8 @@ Run each row on real phones, with the site on GitHub Pages. "Same Wi-Fi" means b
 
 For each pairing, also check:
 
-- **Front/rear switch:** the preview flips and is mirrored on the front camera; the photo is not mirrored; the next photo uses the new camera.
+- **Camera switch:** each tap moves to the next camera (fronts first, then rears) and back round to the first; the label names it; the preview is mirrored on front cameras only; the photo is not mirrored; the next photo uses the new camera.
+- **Landscape viewer:** turn the viewer sideways; the controls move into rails beside the picture, nothing covers it, and the photo review fits the screen.
 - **Timer:** with Off, 3 s, 5 s and 10 s, the countdown shows on both phones; the camera screen flashes red and white each second; the photo fires on time; tapping the shutter during the countdown cancels it.
 - **Rotate:** with rotation lock on and the camera phone propped sideways, rotate on the viewer fixes the preview and the saved photo.
 - **Robustness:**
