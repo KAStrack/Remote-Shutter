@@ -28,6 +28,9 @@
   <section class="screen screen-home" data-screen="home">
     <header class="home-head">
       <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <!-- Release number, so you can tell whether a phone has the latest
+           version. Keep it equal to VERSION in sw.js (a unit test checks). -->
+      <p class="version" id="app-version">v7</p>
       <button class="lang-btn" type="button" data-action="switch-language" lang="zh-Hans" data-i18n="lang.switch" data-i18n-label="lang.switchLabel" aria-label="切换到中文">中文</button>
       <h1 class="wordmark" data-i18n="home.wordmark">Remote Shutter</h1>
       <p class="tagline" data-i18n="home.tagline">Put one phone where the photo is. Frame and shoot from the other.</p>
@@ -220,14 +223,18 @@
     <!-- Photo review: the polaroid. The bottom strip doubles as the transfer bar. -->
     <div class="review" id="review" hidden>
       <figure class="polaroid" id="polaroid">
-        <div class="polaroid-image"><img id="review-img" alt="The photo you just took" data-i18n-alt="viewer.photoAlt"></div>
+        <button class="polaroid-image" type="button" data-action="open-full" id="btn-full" aria-label="See the photo full screen" data-i18n-label="viewer.openFull" disabled>
+          <img id="review-img" alt="The photo you just took" data-i18n-alt="viewer.photoAlt">
+          <span class="full-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span>
+        </button>
         <figcaption class="polaroid-strip">
           <span class="develop-bar"><span id="develop-progress"></span></span>
           <span class="polaroid-caption"><span id="review-caption" data-i18n="viewer.developing">Developing…</span><span id="review-size"></span></span>
         </figcaption>
+        <span class="saved-stamp" aria-hidden="true" data-i18n="viewer.saved">Saved</span>
       </figure>
       <div class="review-actions">
-        <button class="btn btn-primary" type="button" data-action="save-photo" id="btn-save" disabled data-i18n="viewer.save">Save</button>
+        <button class="btn btn-primary" type="button" data-action="save-photo" id="btn-save" disabled><span id="save-label" data-i18n="viewer.save">Save</span></button>
         <button class="btn btn-quiet" type="button" data-action="share-photo" id="btn-share" hidden data-i18n="viewer.share">Share…</button>
         <button class="btn btn-quiet" type="button" data-action="close-photo" data-i18n="viewer.backToLive">Back to live view</button>
       </div>
@@ -243,6 +250,15 @@
       <button class="btn btn-quiet" type="button" data-action="home" data-i18n="common.backToStart">Back to start</button>
     </div>
   </section>
+
+  <!-- The photo full screen, to zoom in on before saving. -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo, full screen" data-i18n-label="viewer.fullLabel" hidden>
+    <img id="lightbox-img" alt="" draggable="false">
+    <button class="icon-btn lightbox-close" type="button" data-action="close-full" aria-label="Close" data-i18n-label="common.close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <p class="lightbox-hint" data-i18n="viewer.zoomHint">Pinch or double-tap to zoom</p>
+  </div>
 
   <!-- Camera-side countdown and flash, visible to the person near the camera. -->
   <div class="camera-count" id="camera-count" aria-live="assertive" hidden></div>

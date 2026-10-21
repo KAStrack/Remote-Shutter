@@ -22,7 +22,7 @@ Put both phones on the **same Wi-Fi**, or one on the other's **hotspot**, and op
 2. The other phone now shows its own code. On the camera phone, tap **Next: scan the reply**.
 3. Point the camera phone at the other phone's code. You're connected.
 
-Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, a camera switch, and zoom where the phone supports it. The controls never cover the picture: they sit above and below it in portrait, and in rails either side of it in landscape. Each photo appears on the viewer, and both phones can save it.
+Then prop the camera phone up and use the viewer. It has a shutter button, a self-timer (3, 5 or 10 s), rotate, a camera switch, and zoom where the phone supports it. The controls never cover the picture: they sit above and below it in portrait, and in rails either side of it in landscape. Each photo appears on the viewer; tap it to see it full screen and pinch or double-tap to zoom in before you decide to save it. Both phones can save it, and the Save button turns green with a tick once the photo is saved.
 
 ## Languages
 
@@ -37,7 +37,7 @@ Everything the site needs is in `docs/`. There's no build step.
 1. Go to the repository's **Settings → Pages**, choose **Deploy from a branch**, and pick `main` and the `/docs` folder.
 2. The app is published at <https://kastrack.github.io/Remote-Shutter/>. All paths are relative, so a fork works at its own `https://<user>.github.io/<repo>/` without changes.
 
-When you change any file in `docs/`, bump `VERSION` in `docs/sw.js`. That's how installed copies of the app pick up the new release. A unit test checks that the service worker's file list matches `docs/`.
+When you change any file in `docs/`, bump `VERSION` in `docs/sw.js`, and the matching number in the top-left corner of the start screen (`app-version` in `docs/index.html`). That's how installed copies of the app pick up the new release, and how you can tell which release a phone is running. A phone that already has the app switches to a new release the next time it's on the start screen after the release downloads, so it can take one extra visit. Unit tests check that the two numbers match, and that the service worker's file list matches `docs/`.
 
 The camera only works on HTTPS pages, which GitHub Pages provides.
 
@@ -161,6 +161,7 @@ Run each row on real phones, with the site on GitHub Pages. "Same Wi-Fi" means b
 For each pairing, also check:
 
 - **Camera switch:** each tap moves to the next camera (fronts first, then rears) and back round to the first; the label names it; the preview is mirrored on front cameras only; the photo is not mirrored; the next photo uses the new camera.
+- **Photo review:** tap the photo for full screen; pinch, double-tap and drag work; the close button and Escape return to the review. After **Save**, the button reads **Saved** with a tick and the print gets a SAVED stamp.
 - **Landscape viewer:** turn the viewer sideways; the controls move into rails beside the picture, nothing covers it, and the photo review fits the screen.
 - **Timer:** with Off, 3 s, 5 s and 10 s, the countdown shows on both phones; the camera screen flashes red and white each second; the photo fires on time; tapping the shutter during the countdown cancels it.
 - **Rotate:** with rotation lock on and the camera phone propped sideways, rotate on the viewer fixes the preview and the saved photo.

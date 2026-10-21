@@ -281,6 +281,7 @@ function keepLastPhoto(blob) {
   const thumb = $('camera-thumb');
   thumb.replaceChildren(Object.assign(new Image(), { src: s.lastUrl, alt: '' }));
   $('btn-camera-save').disabled = false;
+  $('btn-camera-save').classList.remove('done');
   setText($('camera-save-label'), 'camera.saveLast');
 }
 
@@ -289,7 +290,11 @@ export function saveLast() {
   if (!s.lastPhoto) return;
   const file = s.lastPhoto;
   save(file).then((result) => {
+    if (result === 'cancelled') return;
     if (result === 'downloaded') toast(t('common.savedToDownloads'));
+    if (s.lastPhoto !== file) return; // a newer photo arrived meanwhile
+    $('btn-camera-save').classList.add('done');
+    setText($('camera-save-label'), 'camera.savedLast');
   });
 }
 

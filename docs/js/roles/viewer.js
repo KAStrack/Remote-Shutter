@@ -6,6 +6,7 @@ import { openCamera, cameraErrorMessage, unlockHostCandidates } from '../capture
 import { MSG, send, listen, PhotoReceiver } from '../protocol.js';
 import { qrSvg, startScanner } from '../qr.js';
 import { photoFile, save, share, offerSeparateShare } from '../share.js';
+import { openLightbox, closeLightbox } from '../lightbox.js';
 import { t, locale, setText, setLabel } from '../i18n.js';
 
 const TIMERS = [0, 3, 5, 10];
@@ -25,7 +26,7 @@ const s = {
   rotation: 0,
   facing: 'environment',
   counting: false,
-  photo: null, // { file, url }
+  photo: null, // { file, url, size, aspect, saved }
   hasFrames: false,
   zoomSendTimer: 0,
   generation: 0,
@@ -401,7 +402,9 @@ function openReview({ developing, aspect }) {
     setText($('review-caption'), 'viewer.developing');
     $('review-size').textContent = '';
     $('btn-save').disabled = true;
+    $('btn-full').disabled = true;
     $('btn-share').hidden = true;
+    showSaved(false);
     setDevelop(0);
   }
 }
@@ -414,7 +417,7 @@ function gotPhoto(blob, meta) {
   if (s.photo) URL.revokeObjectURL(s.photo.url);
   const file = photoFile(blob);
   const size = meta.width && meta.height ? `${meta.width} × ${meta.height}` : '';
-  s.photo = { file, url: URL.createObjectURL(blob), size, aspect: meta.width / meta.height };
+  s.photo = { file, url: URL.createObjectURL(blob), size, aspect: meta.width / meta.height, saved: false };
   $('polaroid').dataset.method = meta.method || '';
   const img = $('review-img');
   img.onload = () => {
@@ -427,6 +430,7 @@ function gotPhoto(blob, meta) {
   $('review-caption').textContent = new Date().toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
   $('review-size').textContent = size;
   $('btn-save').disabled = false;
+  $('btn-full').disabled = false;
   $('btn-share').hidden = !offerSeparateShare(file);
   $('btn-last-photo').disabled = false;
   $('last-thumb').replaceChildren(Object.assign(new Image(), { src: s.photo.url, alt: '' }));
@@ -439,19 +443,39 @@ export function showLastPhoto() {
   $('review-size').textContent = s.photo.size;
   $('polaroid').classList.add('developed');
   $('btn-save').disabled = false;
+  $('btn-full').disabled = false;
   $('btn-share').hidden = !offerSeparateShare(s.photo.file);
+  showSaved(s.photo.saved);
 }
 
 export function closeReview() {
+  closeLightbox();
   $('review').hidden = true;
+}
+
+export function openFullScreen() {
+  if (s.photo) openLightbox(s.photo.url, $('btn-full'));
 }
 
 // Run straight from taps: no awaits before share() (Safari).
 export function savePhoto() {
   if (!s.photo) return;
-  save(s.photo.file).then((result) => {
+  const photo = s.photo;
+  save(photo.file).then((result) => {
+    if (result === 'cancelled') return;
     if (result === 'downloaded') toast(t('common.savedToDownloads'));
+    photo.saved = true;
+    vibrate(20);
+    if (s.photo === photo) showSaved(true);
   });
+}
+
+// The Save button turns into a green "Saved" and the print gets a stamp.
+// Saving again still works (another copy), so the button stays enabled.
+function showSaved(saved) {
+  $('btn-save').classList.toggle('done', saved);
+  setText($('save-label'), saved ? 'viewer.saved' : 'viewer.save');
+  $('polaroid').classList.toggle('saved', saved);
 }
 
 export function sharePhoto() {

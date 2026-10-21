@@ -22,6 +22,12 @@ test('sw.js precaches every app file', () => {
   assert.deepEqual(list.filter((a) => a !== './').sort(), needed.sort());
 });
 
+test('the start screen shows the service worker version', () => {
+  const sw = /const VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(docs, 'sw.js'), 'utf8'))[1];
+  const html = fs.readFileSync(path.join(docs, 'index.html'), 'utf8');
+  assert.equal(/id="app-version">([^<]*)</.exec(html)?.[1], sw);
+});
+
 test('every local reference in index.html exists', () => {
   const html = fs.readFileSync(path.join(docs, 'index.html'), 'utf8');
   for (const [, ref] of html.matchAll(/(?:href|src)="([^"#:]+)"/g)) {

@@ -67,6 +67,25 @@ await shot(view, 'viewer-photo');
 await cam.waitForTimeout(300);
 await shot(cam, 'camera-live');
 
+// Full screen, then zoomed in on the middle with a double tap.
+await view.click('#btn-full');
+await view.waitForTimeout(400);
+await shot(view, 'viewer-full');
+await view.tap('#lightbox', { position: { x: 195, y: 422 } });
+await view.tap('#lightbox', { position: { x: 195, y: 422 } });
+await view.waitForTimeout(400);
+await shot(view, 'viewer-full-zoomed');
+await view.click('.lightbox-close');
+
+// Saved: green button and a stamp on the print; same on the camera phone.
+await view.click('#btn-save');
+await view.waitForFunction(() => document.getElementById('polaroid').classList.contains('saved'));
+await view.waitForTimeout(400);
+await shot(view, 'viewer-saved');
+await cam.click('#btn-camera-save');
+await cam.waitForFunction(() => document.getElementById('btn-camera-save').classList.contains('done'));
+await shot(cam, 'camera-saved');
+
 await view.click('[data-action="close-photo"]');
 await view.click('.live-top [data-action="disconnect"]');
 await cam.waitForFunction(() => !document.getElementById('sheet').hidden);
