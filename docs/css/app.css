@@ -798,6 +798,7 @@ body[data-screen="camera-live"] .cam-video {
   grid-template:
     "top" auto
     "stage" 1fr
+    "lenses" auto
     "zoom" auto
     "deck" auto / 100%;
   padding: 0;
@@ -888,6 +889,50 @@ body[data-screen="camera-live"] .cam-video {
   font-variant-numeric: tabular-nums;
 }
 
+/* Camera choices: a row of chips, the current one lit up yellow. */
+.lenses {
+  grid-area: lenses;
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(94vw, 28rem);
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.1);
+}
+.lens-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.lens-chip {
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  color: var(--on-dark);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lens-chip[aria-pressed="true"] { background: var(--s-yellow); color: #1D1C1A; }
+.lens-chip:disabled { opacity: 0.55; }
+.lens-chip.pending { opacity: 1; animation: lens-wait 900ms ease-in-out infinite alternate; }
+@keyframes lens-wait { to { background: rgb(255 255 255 / 0.3); } }
+.lens-note {
+  margin: 0;
+  max-width: 24rem;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  color: rgb(255 255 255 / 0.7);
+}
+
 .countdown {
   grid-area: stage;
   display: grid;
@@ -935,8 +980,11 @@ body[data-screen="camera-live"] .cam-video {
 .deck-btn.unavailable { visibility: hidden; } /* keeps the shutter centred */
 .deck-btn.on { color: var(--s-yellow); }
 .deck-label {
+  max-width: 76px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1284,8 +1332,20 @@ body[data-screen="camera-live"] .cam-video {
   .screen-live {
     grid-template:
       "top stage deck" auto
+      "lenses stage deck" auto
       "zoom stage deck" 1fr / auto 1fr auto;
   }
+  /* A column of chips in the left rail, under the status. */
+  .lenses {
+    justify-self: stretch;
+    width: 8.5rem;
+    margin: 10px 8px 0 calc(var(--safe-l) + 8px);
+    padding: 8px;
+    border-radius: 16px;
+  }
+  .lens-list { flex-direction: column; flex-wrap: nowrap; justify-self: stretch; gap: 6px; }
+  .lens-chip { min-height: 36px; padding: 6px 10px; font-size: 13px; }
+  .lens-note { font-size: 11.5px; }
   .live-top {
     flex-direction: column-reverse;
     justify-content: flex-end;

@@ -84,6 +84,7 @@ const actions = {
   'cycle-timer': () => viewer.cycleTimer(),
   rotate: () => viewer.rotate(),
   'switch-camera': () => viewer.switchCamera(),
+  'pick-camera': (el) => viewer.pickCamera(el.dataset.deviceId),
   'show-photo': () => viewer.showLastPhoto(),
   'open-full': () => viewer.openFullScreen(),
   'close-full': closeLightbox,
@@ -102,17 +103,19 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
   const fn = actions[el.dataset.action];
-  if (fn) fn();
+  if (fn) fn(el);
 });
 
 $('zoom-range').addEventListener('input', () => viewer.onZoomInput());
 
-// Escape closes the full-screen photo, the photo review or the trouble sheet.
+// Escape closes the full-screen photo, the photo review, the trouble sheet
+// or the list of cameras.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (lightboxOpen()) closeLightbox();
   else if (!$('review').hidden) viewer.closeReview();
   else if (!$('btn-sheet-dismiss').hidden) hideSheet();
+  else if (viewer.lensesOpen()) viewer.showLenses(false);
 });
 
 // A new pairing link while the app is already open (e.g. the browser reused

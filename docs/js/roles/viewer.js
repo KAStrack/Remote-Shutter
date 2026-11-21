@@ -8,6 +8,7 @@ import { qrSvg, startScanner } from '../qr.js';
 import { photoFile, save, share, offerSeparateShare } from '../share.js';
 import { openLightbox, closeLightbox } from '../lightbox.js';
 import { t, locale, setText, setLabel } from '../i18n.js';
+import { nameCameras, lensNote } from '../lenses.js';
 
 const TIMERS = [0, 3, 5, 10];
 const NO_ICE_HINT_MS = 20000;
@@ -29,6 +30,8 @@ const s = {
   photo: null, // { file, url, size, aspect, saved }
   hasFrames: false,
   zoomSendTimer: 0,
+  cameras: [], // the camera phone's cameras, named; empty from older camera phones
+  cameraId: null, // which one is on
   generation: 0,
 };
 
@@ -85,6 +88,9 @@ function closePeer(sayBye) {
   s.dc?.close();
   s.pc?.close();
   s.pc = s.dc = null;
+  s.cameras = [];
+  s.cameraId = null;
+  showLenses(false);
   remote.srcObject = null;
   receiver.reset();
   hideCountdown();
@@ -278,17 +284,29 @@ function onMessage(msg) {
 
 function applyStatus(msg) {
   s.facing = msg.facing;
-  // Front / Rear, or Front 1, Front 2... when several face the same way.
-  const [one, numbered] = {
-    user: ['viewer.front', 'viewer.frontN'],
-    environment: ['viewer.rear', 'viewer.rearN'],
-  }[msg.facing] || ['viewer.otherCamera', 'viewer.otherCameraN'];
-  const n = Number(msg.cameraNumber) || 0;
-  if (n) setText($('switch-label'), numbered, { n });
-  else setText($('switch-label'), one);
+  s.cameras = Array.isArray(msg.cameras) ? nameCameras(msg.cameras) : [];
+  s.cameraId = msg.deviceId || null;
+  const current = s.cameras.find((c) => c.deviceId === s.cameraId);
+  if (current) {
+    setText($('switch-label'), current.key, current.vars);
+  } else {
+    // Older camera phone: Front / Rear, or Front 1, Front 2... when several
+    // face the same way.
+    const [one, numbered] = {
+      user: ['viewer.front', 'viewer.frontN'],
+      environment: ['viewer.rear', 'viewer.rearN'],
+    }[msg.facing] || ['viewer.otherCamera', 'viewer.otherCameraN'];
+    const n = Number(msg.cameraNumber) || 0;
+    if (n) setText($('switch-label'), numbered, { n });
+    else setText($('switch-label'), one);
+  }
   $('switch-label').dataset.ready = '1';
   $('btn-switch').disabled = false;
-  $('btn-switch').classList.toggle('unavailable', msg.canSwitch === false);
+  // Nothing to choose from: hide the button, but keep its space so the
+  // shutter stays centred. Can't list them at all: let the viewer try.
+  $('btn-switch').classList.toggle('unavailable', msg.canSwitch === false && !s.cameras.length);
+  if (!s.cameras.length) showLenses(false);
+  renderLenses(msg.cameras || []);
   stage.classList.toggle('mirror', s.facing === 'user');
 
   const zoom = msg.zoom;
@@ -342,9 +360,63 @@ export function rotate() {
   send(s.dc, MSG.SET_ROTATION, { quarterTurns: s.rotation });
 }
 
+// The camera button opens the list of cameras by name. An older camera
+// phone doesn't send one, so then it just asks for the next camera.
 export function switchCamera() {
+  if (s.cameras.length) {
+    showLenses($('lenses').hidden);
+    return;
+  }
   $('btn-switch').disabled = true; // re-enabled by the next status message
   send(s.dc, MSG.SWITCH_CAMERA);
+}
+
+export function showLenses(open) {
+  $('lenses').hidden = !open;
+  $('btn-switch').setAttribute('aria-expanded', String(open));
+  $('btn-switch').classList.toggle('on', open);
+}
+
+export function lensesOpen() {
+  return !$('lenses').hidden;
+}
+
+// The list stays open after a choice, so you can compare lenses on the
+// live picture; the camera button closes it.
+export function pickCamera(deviceId) {
+  if (!deviceId || deviceId === s.cameraId || !s.dc || !send(s.dc, MSG.SELECT_CAMERA, { deviceId })) return;
+  for (const chip of $('lens-list').children) {
+    chip.disabled = true; // until the camera phone's next status
+    chip.classList.toggle('pending', chip.dataset.deviceId === deviceId);
+  }
+}
+
+// One chip per camera, current one pressed, plus a note when the list
+// needs explaining (e.g. a Pixel offering browsers only one rear camera).
+function renderLenses(raw) {
+  const list = $('lens-list');
+  const ids = s.cameras.map((c) => c.deviceId).join('\n');
+  if (list.dataset.ids !== ids) {
+    list.dataset.ids = ids;
+    list.replaceChildren(...s.cameras.map((c) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'lens-chip';
+      chip.dataset.action = 'pick-camera';
+      chip.dataset.deviceId = c.deviceId;
+      setText(chip, c.key, c.vars);
+      return chip;
+    }));
+  }
+  for (const chip of list.children) {
+    chip.disabled = false;
+    chip.classList.remove('pending');
+    chip.setAttribute('aria-pressed', String(chip.dataset.deviceId === s.cameraId));
+  }
+  const note = $('lens-note');
+  const key = s.cameras.length ? lensNote(raw) : null;
+  note.hidden = !key;
+  if (key) setText(note, key);
 }
 
 export function onZoomInput() {

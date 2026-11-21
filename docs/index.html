@@ -30,7 +30,7 @@
       <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
       <!-- Release number, so you can tell whether a phone has the latest
            version. Keep it equal to VERSION in sw.js (a unit test checks). -->
-      <p class="version" id="app-version">v7</p>
+      <p class="version" id="app-version">v8</p>
       <button class="lang-btn" type="button" data-action="switch-language" lang="zh-Hans" data-i18n="lang.switch" data-i18n-label="lang.switchLabel" aria-label="切换到中文">中文</button>
       <h1 class="wordmark" data-i18n="home.wordmark">Remote Shutter</h1>
       <p class="tagline" data-i18n="home.tagline">Put one phone where the photo is. Frame and shoot from the other.</p>
@@ -194,6 +194,12 @@
     <button class="tap-to-play" type="button" data-action="play-video" id="btn-play" hidden data-i18n="viewer.tapToPlay">Tap to show the live view</button>
     <div class="countdown" id="countdown" aria-live="assertive" hidden></div>
 
+    <!-- The camera phone's cameras by name, opened from the camera button. -->
+    <div class="lenses" id="lenses" hidden>
+      <div class="lens-list" id="lens-list" role="group" aria-label="Cameras" data-i18n-label="viewer.cameras"></div>
+      <p class="lens-note" id="lens-note" hidden></p>
+    </div>
+
     <div class="zoom" id="zoom" hidden>
       <label class="visually-hidden" for="zoom-range" data-i18n="viewer.zoom">Zoom</label>
       <input type="range" id="zoom-range" min="1" max="2" step="0.1" value="1">
@@ -210,7 +216,7 @@
         <span class="deck-label" id="rotate-label">0°</span>
       </button>
       <button class="shutter" type="button" data-action="shutter" id="btn-shutter" aria-label="Take photo" data-i18n-label="viewer.takePhoto" disabled><span></span></button>
-      <button class="deck-btn" type="button" data-action="switch-camera" id="btn-switch" aria-label="Switch camera" data-i18n-label="viewer.switchCamera">
+      <button class="deck-btn" type="button" data-action="switch-camera" id="btn-switch" aria-label="Switch camera" data-i18n-label="viewer.switchCamera" aria-controls="lenses">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13.5a2.5 2.5 0 0 0 4.6 1.4M14.5 12.5a2.5 2.5 0 0 0-4.6-1.4"/><path d="M14.5 15.5v-1.6h-1.6M9.5 10.5v1.6h1.6"/></svg>
         <span class="deck-label" id="switch-label" data-i18n="viewer.rear">Rear</span>
       </button>

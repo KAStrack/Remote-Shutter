@@ -39,6 +39,22 @@ async function openApp(engine, path = '/', locale = 'en-US', options = {}) {
       navigator.mediaDevices.getUserMedia = (c) => gum(c?.video ? { ...c, video: { ...(typeof c.video === 'object' ? c.video : {}), width: { ideal: 1280 }, height: { ideal: 720 } } } : c);
     });
   }
+  if (options.labels) {
+    // Name the fake cameras like a real phone's, in order, e.g. an iPhone's
+    // "Back Ultra Wide Camera". They then only say what they are by name.
+    await context.addInitScript((labels) => {
+      const md = navigator.mediaDevices;
+      const list = md.enumerateDevices.bind(md);
+      md.enumerateDevices = async () => {
+        let i = 0;
+        return (await list()).map((d) => {
+          if (d.kind !== 'videoinput') return d;
+          const label = labels[i++] ?? d.label;
+          return { kind: d.kind, deviceId: d.deviceId, groupId: d.groupId, label, getCapabilities: () => ({}), toJSON: () => ({}) };
+        });
+      };
+    }, options.labels);
+  }
   const page = await context.newPage();
   const errors = [];
   page.on('crash', () => console.log(`  !! ${engine} page crashed (${path})`));
@@ -132,8 +148,8 @@ test('language: Simplified Chinese is picked automatically, and the switch is re
 // Pairs a new camera page with a new viewer page through both QR codes, and
 // waits until the viewer shows live video. Browsers go into `open` as they
 // launch, so the caller can close them even if pairing fails.
-async function pair({ camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US', cameras }, open) {
-  const cam = await openApp(camEngine, '/', camLocale, { cameras });
+async function pair({ camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US', cameras, labels }, open) {
+  const cam = await openApp(camEngine, '/', camLocale, { cameras, labels });
   open.push(cam.browser);
 
   // Camera shows its pairing code.
@@ -264,20 +280,25 @@ for (const [camEngine, viewEngine, camLocale = 'en-US', viewLocale = 'en-US'] of
 }
 
 // Nothing covers the picture, portrait or landscape (where the controls are
-// rails beside it), and the switch button steps through every camera.
-test('viewer: controls stay off the picture; switch cycles through all cameras', { timeout: 120000 }, async () => {
+// rails beside it), even with the list of cameras open; picking a camera
+// from that list switches to exactly that one.
+test('viewer: controls stay off the picture; pick any camera by name', { timeout: 120000 }, async () => {
   const open = [];
   try {
     const { cam, view } = await pair({ camEngine: 'chromium', viewEngine: 'chromium', cameras: 3 }, open);
     await view.page.waitForFunction(() => document.getElementById('switch-label').dataset.ready === '1');
     await view.page.evaluate(() => { document.getElementById('zoom').hidden = false; }); // fake cameras lack zoom
+    assert.equal(await view.page.isVisible('#lenses'), false, 'camera list starts closed');
+    await view.page.click('#btn-switch');
+    await view.page.waitForSelector('#lenses:not([hidden])');
+    assert.equal(await view.page.getAttribute('#btn-switch', 'aria-expanded'), 'true');
     await view.page.waitForTimeout(300); // the stage resizes the video on the next frame
 
     const layout = () => view.page.evaluate(() => {
       const box = (el) => el.getBoundingClientRect();
       const stage = box(document.getElementById('stage'));
       const video = box(document.getElementById('remote-video'));
-      const controls = ['.live-top', '#zoom', '.deck'].map((sel) => box(document.querySelector(sel)));
+      const controls = ['.live-top', '#zoom', '.deck', '#lenses'].map((sel) => box(document.querySelector(sel)));
       const overlaps = controls.filter((c) => c.left < stage.right && c.right > stage.left && c.top < stage.bottom && c.bottom > stage.top);
       return {
         overlaps: overlaps.length,
@@ -300,19 +321,90 @@ test('viewer: controls stay off the picture; switch cycles through all cameras',
     assert.ok(landscape.deck.height > landscape.deck.width, 'landscape: deck down the side');
     assert.ok(landscape.stage.width >= 844 * 0.7, `landscape: picture only ${landscape.stage.width}px wide`);
 
-    // Three cameras (none say which way they face): 1 -> 2 -> 3 -> 1.
+    // Three cameras (none say which way they face), offered by name. The
+    // list stays open after each pick; the pressed chip follows the camera.
+    await view.page.setViewportSize({ width: 390, height: 844 });
     const deviceId = () => cam.page.evaluate(() => document.getElementById('cam-video').srcObject.getVideoTracks()[0].getSettings().deviceId);
-    const seen = [[await view.page.textContent('#switch-label'), await deviceId()]];
-    for (let i = 0; i < 3; i++) {
-      await view.page.click('#btn-switch');
-      await view.page.waitForFunction(() => !document.getElementById('btn-switch').disabled, null, { timeout: 10000 });
-      seen.push([await view.page.textContent('#switch-label'), await deviceId()]);
+    const chips = () => view.page.$$eval('#lens-list .lens-chip', (els) => els.map((b) => ({ name: b.textContent, id: b.dataset.deviceId, on: b.getAttribute('aria-pressed') === 'true' })));
+    const first = await chips();
+    assert.deepEqual(first.map((c) => c.name), ['Camera 1', 'Camera 2', 'Camera 3']);
+    assert.deepEqual(first.map((c) => c.on), [true, false, false]);
+    assert.equal(first[0].id, await deviceId());
+    assert.equal(await view.page.isVisible('#lens-note'), true, 'note explains a short list');
+    for (const i of [2, 1, 0]) {
+      await view.page.click(`#lens-list .lens-chip:nth-child(${i + 1})`);
+      await view.page.waitForFunction((n) => {
+        const chip = document.querySelectorAll('#lens-list .lens-chip')[n];
+        return chip.getAttribute('aria-pressed') === 'true' && !chip.disabled;
+      }, i, { timeout: 10000 });
+      assert.equal(await deviceId(), first[i].id, `switched to ${first[i].name}`);
+      assert.equal(await view.page.textContent('#switch-label'), first[i].name);
+      assert.equal(await view.page.isVisible('#lenses'), true, 'list stays open');
     }
-    assert.deepEqual(seen.map(([label]) => label), ['Camera 1', 'Camera 2', 'Camera 3', 'Camera 1']);
-    assert.equal(new Set(seen.slice(0, 3).map(([, id]) => id)).size, 3, 'three different cameras');
-    assert.equal(seen[3][1], seen[0][1], 'back to the first camera');
+    await view.page.click('#btn-switch');
+    await view.page.waitForSelector('#lenses', { state: 'hidden' });
     assert.equal(await view.page.$eval('#btn-switch', (b) => b.classList.contains('unavailable')), false);
     assert.deepEqual(cam.errors, []);
+    assert.deepEqual(view.errors, []);
+  } finally {
+    await closeAll(...open);
+  }
+});
+
+// An iPhone Pro lists each lens and its combined cameras. The viewer offers
+// the lenses by name, like the phone's own camera app, and picking Ultra
+// wide opens exactly that camera.
+test('viewer: named lenses from an iPhone-style list', { timeout: 120000 }, async () => {
+  const open = [];
+  const labels = ['Back Camera', 'Front Camera', 'Back Telephoto Camera', 'Back Dual Wide Camera', 'Back Triple Camera', 'Back Ultra Wide Camera'];
+  const shot = (page, name) => process.env.SHOTS && page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+  try {
+    const { cam, view } = await pair({ camEngine: 'chromium', viewEngine: 'chromium', cameras: labels.length, labels }, open);
+    await view.page.waitForFunction(() => document.getElementById('switch-label').dataset.ready === '1');
+    assert.equal(await view.page.textContent('#switch-label'), 'Wide');
+    await view.page.click('#btn-switch');
+    await view.page.waitForSelector('#lenses:not([hidden])');
+    const names = await view.page.$$eval('#lens-list .lens-chip', (els) => els.map((b) => b.textContent));
+    assert.deepEqual(names, ['Front', 'Ultra wide', 'Wide', 'Telephoto']);
+    assert.equal(await view.page.isVisible('#lens-note'), false, 'nothing to explain');
+
+    const label = () => cam.page.evaluate(() => document.getElementById('cam-video').srcObject.getVideoTracks()[0].label);
+    await view.page.click('#lens-list .lens-chip:nth-child(2)');
+    await view.page.waitForFunction(() => document.getElementById('switch-label').textContent === 'Ultra wide', null, { timeout: 10000 });
+    await view.page.waitForFunction(() => !document.querySelector('#lens-list .lens-chip').disabled);
+    // The fake camera's own label: the 6th device, which we named Ultra Wide.
+    const all = await cam.page.evaluate(async () => (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').map((d) => d.deviceId));
+    const current = await cam.page.evaluate(() => document.getElementById('cam-video').srcObject.getVideoTracks()[0].getSettings().deviceId);
+    assert.equal(all.indexOf(current), 5, `opened ${await label()}`);
+    await view.page.waitForTimeout(400);
+    await shot(view.page, 'iphone-portrait');
+    await view.page.setViewportSize({ width: 844, height: 390 });
+    await view.page.waitForTimeout(500);
+    await shot(view.page, 'iphone-landscape');
+    assert.deepEqual(cam.errors, []);
+    assert.deepEqual(view.errors, []);
+  } finally {
+    await closeAll(...open);
+  }
+});
+
+// A Pixel's Chrome offers one front and one rear camera; the list says why.
+test('viewer: a Pixel-style list explains the missing lenses', { timeout: 120000 }, async () => {
+  const open = [];
+  const shot = (page, name) => process.env.SHOTS && page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+  try {
+    const { view } = await pair({ camEngine: 'chromium', viewEngine: 'chromium', cameras: 2, labels: ['camera2 0, facing back', 'camera2 1, facing front'] }, open);
+    await view.page.waitForFunction(() => document.getElementById('switch-label').dataset.ready === '1');
+    assert.equal(await view.page.textContent('#switch-label'), 'Rear');
+    await view.page.click('#btn-switch');
+    await view.page.waitForSelector('#lenses:not([hidden])');
+    assert.deepEqual(await view.page.$$eval('#lens-list .lens-chip', (els) => els.map((b) => b.textContent)), ['Front', 'Rear']);
+    assert.match(await view.page.textContent('#lens-note'), /Pixels/);
+    await view.page.waitForTimeout(400);
+    await shot(view.page, 'pixel-portrait');
+    await view.page.setViewportSize({ width: 844, height: 390 });
+    await view.page.waitForTimeout(500);
+    await shot(view.page, 'pixel-landscape');
     assert.deepEqual(view.errors, []);
   } finally {
     await closeAll(...open);

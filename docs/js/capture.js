@@ -2,6 +2,7 @@
 // phone's own full-resolution track, never from the received preview.
 
 import { t } from './i18n.js';
+import { lensKind, orderCameras } from './lenses.js';
 
 const JPEG_QUALITY = 0.92;
 // Keep canvases under iOS's ~16.7 MP limit and phones' memory comfortable.
@@ -29,15 +30,14 @@ export function rememberFacing(deviceId, facing) {
   if (deviceId && facing) knownFacing.set(deviceId, facing);
 }
 
-// Every camera on this phone in switching order: front ones first, then rear,
-// then any we can't place. facing is 'user', 'environment' or '' (unknown).
+// Every camera on this phone in switching order (see orderCameras), as
+// [{ deviceId, facing, kind }]. facing is 'user', 'environment' or ''
+// (unknown); kind is the lens type from lensKind.
 export async function listCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices();
-  const rank = { user: 0, environment: 1, '': 2 };
-  return devices
+  return orderCameras(devices
     .filter((d) => d.kind === 'videoinput' && d.deviceId)
-    .map((d) => ({ deviceId: d.deviceId, facing: knownFacing.get(d.deviceId) || guessFacing(d) }))
-    .sort((a, b) => rank[a.facing] - rank[b.facing]); // stable: keeps the phone's own order within a group
+    .map((d) => ({ deviceId: d.deviceId, facing: knownFacing.get(d.deviceId) || guessFacing(d), kind: lensKind(d.label) })));
 }
 
 // Chrome reports a device's facing directly; elsewhere only the label says

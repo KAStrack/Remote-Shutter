@@ -7,7 +7,8 @@ export const MSG = {
   CAPTURE: 'capture',
   TIMER_START: 'timerStart',
   TIMER_CANCEL: 'timerCancel',
-  SWITCH_CAMERA: 'switchCamera',
+  SWITCH_CAMERA: 'switchCamera', // next camera (kept for older viewers)
+  SELECT_CAMERA: 'selectCamera', // { deviceId }
   SET_ZOOM: 'setZoom',
   SET_ROTATION: 'setRotation',
   // camera -> viewer

@@ -37,7 +37,7 @@ test('every key used in index.html exists', () => {
 });
 
 test('every literal key used in the code exists', () => {
-  const files = ['app.js', 'ui.js', 'capture.js', 'roles/camera.js', 'roles/viewer.js'];
+  const files = ['app.js', 'ui.js', 'capture.js', 'lenses.js', 'roles/camera.js', 'roles/viewer.js'];
   for (const f of files) {
     const src = fs.readFileSync(path.join(docs, 'js', f), 'utf8');
     const keys = [

@@ -2,7 +2,7 @@
 // pick up the new release, and update the matching number shown on the start
 // screen in index.html (the unit tests check both, and that this list
 // matches docs/).
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `remote-shutter-${VERSION}`;
 
 const ASSETS = [
@@ -18,6 +18,7 @@ const ASSETS = [
   'js/app.js',
   'js/capture.js',
   'js/i18n.js',
+  'js/lenses.js',
   'js/lightbox.js',
   'js/locales/en.js',
   'js/locales/zh-Hans.js',

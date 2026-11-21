@@ -207,6 +207,7 @@ function onMessage(msg) {
     case MSG.TIMER_START: startTimer(Number(msg.seconds)); break;
     case MSG.TIMER_CANCEL: stopTimer(true); break;
     case MSG.SWITCH_CAMERA: switchCamera(); break;
+    case MSG.SELECT_CAMERA: selectCamera(String(msg.deviceId || '')); break;
     case MSG.SET_ZOOM: applyZoom(msg.value); break;
     case MSG.SET_ROTATION:
       s.rotation = ((Number(msg.quarterTurns) % 4) + 4) % 4;
@@ -240,6 +241,10 @@ async function sendStatus() {
     cameraNumber: number,
     zoom: zoomInfo(s.track),
     canSwitch: cameras.length !== 1, // can't list them: let the viewer try
+    // Every camera, so the viewer can offer them by name. Empty when the
+    // phone can't list them; the viewer then just asks for the next one.
+    cameras: cameras.map(({ deviceId, facing, kind }) => ({ deviceId, facing, kind })),
+    deviceId: s.deviceId,
     rotation: s.rotation,
     width: settings.width,
     height: settings.height,
@@ -341,19 +346,42 @@ function stopTimer(notify) {
 
 // ------------------------------------------------------------ camera controls
 
-// Steps through every camera in turn: front 1 -> front 2 -> rear -> front 1.
+// Old viewers: step through every camera in turn, front 1 -> front 2 ->
+// rear -> front 1. Newer viewers pick one by name (selectCamera).
 async function switchCamera() {
-  if (s.busy || s.timer) return;
+  if (refuseSwitch()) return;
   const cameras = await cameraList();
-  const previous = { facing: s.facing, deviceId: s.deviceId };
   let next;
   if (cameras.length) {
-    const at = cameras.findIndex((c) => c.deviceId === previous.deviceId);
+    const at = cameras.findIndex((c) => c.deviceId === s.deviceId);
     next = cameras[(at + 1) % cameras.length];
   } else {
     // Can't list them: fall back to flipping direction.
-    next = { facing: previous.facing === 'user' ? 'environment' : 'user', deviceId: null };
+    next = { facing: s.facing === 'user' ? 'environment' : 'user', deviceId: null };
   }
+  await switchTo(next);
+}
+
+async function selectCamera(deviceId) {
+  if (refuseSwitch()) return;
+  const next = (await cameraList()).find((c) => c.deviceId === deviceId);
+  if (!next || deviceId === s.deviceId) {
+    sendStatus(); // nothing to do, but the viewer waits for an answer
+    return;
+  }
+  await switchTo(next);
+}
+
+// No switching mid-shot. Always answer, so the viewer's controls come back.
+function refuseSwitch() {
+  if (!s.busy && !s.timer) return false;
+  send(s.dc, MSG.ERROR, { code: 'switchBusy' });
+  sendStatus();
+  return true;
+}
+
+async function switchTo(next) {
+  const previous = { facing: s.facing, deviceId: s.deviceId };
   // iOS allows one capture at a time: stop the old track first.
   s.track?.removeEventListener('ended', onTrackEnded);
   s.stream?.getTracks().forEach((t) => t.stop());
@@ -366,6 +394,7 @@ async function switchCamera() {
     } catch (err2) {
       send(s.dc, MSG.ERROR, { code: 'cameraFailed' });
       toast(cameraErrorMessage(err2), 5000);
+      sendStatus();
       return;
     }
     send(s.dc, MSG.ERROR, { code: 'switchFailed' });
